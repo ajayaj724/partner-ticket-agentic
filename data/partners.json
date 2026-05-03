@@ -1,0 +1,34 @@
+[
+  {
+    "partner_id": "P-1001",
+    "name": "BrusselsNet BV",
+    "tier": "gold",
+    "primary_contact": "ops@brusselsnet.example.be",
+    "primary_phone": "+32 2 555 0101",
+    "active_circuits": ["CIRC-44781", "CIRC-44782"]
+  },
+  {
+    "partner_id": "P-1002",
+    "name": "Antwerp Cable NV",
+    "tier": "silver",
+    "primary_contact": "noc@antwerpcable.example.be",
+    "primary_phone": "+32 3 555 0202",
+    "active_circuits": ["CIRC-55120"]
+  },
+  {
+    "partner_id": "P-1003",
+    "name": "Liege Fibre SPRL",
+    "tier": "bronze",
+    "primary_contact": "support@liegefibre.example.be",
+    "primary_phone": "+32 4 555 0303",
+    "active_circuits": ["CIRC-66301", "CIRC-66302", "CIRC-66303"]
+  },
+  {
+    "partner_id": "P-1004",
+    "name": "Ghent Comms VOF",
+    "tier": "gold",
+    "primary_contact": "ticketing@ghentcomms.example.be",
+    "primary_phone": "+32 9 555 0404",
+    "active_circuits": ["CIRC-77410"]
+  }
+]

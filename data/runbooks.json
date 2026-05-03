@@ -1,0 +1,66 @@
+[
+  {
+    "id": "RB-001",
+    "category": "circuit_down",
+    "title": "Partner-reported circuit outage",
+    "summary": "Confirm circuit status in inventory, run a probe, escalate to NOC if probe fails for >5 minutes.",
+    "owner_queue": "NOC-L2",
+    "sla_minutes": 60
+  },
+  {
+    "id": "RB-002",
+    "category": "appointment_change",
+    "title": "Appointment reschedule request",
+    "summary": "Verify partner identity, find alternative slot in dispatch system, confirm with partner via email.",
+    "owner_queue": "DISPATCH",
+    "sla_minutes": 240
+  },
+  {
+    "id": "RB-003",
+    "category": "billing_discrepancy",
+    "title": "Invoice mismatch raised by partner",
+    "summary": "Pull last 3 invoices, compare to contracted rate card, route to Finance Ops if delta > EUR 50.",
+    "owner_queue": "FIN-OPS",
+    "sla_minutes": 1440
+  },
+  {
+    "id": "RB-004",
+    "category": "provisioning_request",
+    "title": "New circuit / line provisioning",
+    "summary": "Validate site address, capacity check, schedule field engineer, confirm SLA window with partner.",
+    "owner_queue": "PROVISIONING",
+    "sla_minutes": 2880
+  },
+  {
+    "id": "RB-005",
+    "category": "config_change",
+    "title": "Routing or VLAN config change",
+    "summary": "Validate change window, raise CRQ in change management, schedule with NetEng for off-peak execution.",
+    "owner_queue": "NETENG",
+    "sla_minutes": 720
+  },
+  {
+    "id": "RB-006",
+    "category": "credentials",
+    "title": "Lost or expired partner portal credentials",
+    "summary": "Verify partner identity, trigger password reset via IDP, do not include any secret in reply.",
+    "owner_queue": "IDP-SUPPORT",
+    "sla_minutes": 120
+  },
+  {
+    "id": "RB-007",
+    "category": "performance_degradation",
+    "title": "Slow throughput / packet loss on circuit",
+    "summary": "Pull last 24h metrics from inventory, run latency probe, open incident if loss > 1% sustained.",
+    "owner_queue": "NOC-L2",
+    "sla_minutes": 240
+  },
+  {
+    "id": "RB-008",
+    "category": "general_query",
+    "title": "Generic partner question",
+    "summary": "Answer from knowledge base if applicable, else route to FrontOffice for human handling.",
+    "owner_queue": "FRONT-OFFICE",
+    "sla_minutes": 480
+  }
+]
