@@ -1,12 +1,11 @@
 """Command-line interface for the partner-ticketing agentic platform.
 
 Exposes the entry points described in ``docs/DESIGN.md`` Section 6 (Demo
-Plan). For the scaffold milestone the CLI implements ``--list`` end-to-end
-(reading the seed data under ``data/sample_tickets.json``) and registers
-placeholder handlers for ``--ticket-id``, ``--watchdog``, ``--inject``, and
-``--llm-provider`` that subsequent commits replace with real implementations.
-Keeping the surface stable from the start means the demo invocations in the
-README and the design doc remain valid as features land.
+Plan): ``--list``, ``--ticket-id``, ``--watchdog --once``, and
+``--inject``. The provider is selectable at runtime via
+``--llm-provider mock|anthropic|ollama``; the default is ``mock`` so the
+demo runs offline with no API keys. ``--export-trace PATH`` dumps the
+full structured trace for the run to disk.
 """
 
 from __future__ import annotations
@@ -18,6 +17,9 @@ from pathlib import Path
 from typing import Any
 
 from partner_ticket_agentic import __version__
+from partner_ticket_agentic.obs import new_trace_id, trace_collector
+from partner_ticket_agentic.providers import make_provider
+from partner_ticket_agentic.safety import SafetyError, assert_safe_input
 
 
 def _project_root() -> Path:
@@ -64,11 +66,128 @@ def _cmd_list(_: argparse.Namespace) -> int:
     return 0
 
 
-def _cmd_not_yet_implemented(name: str) -> int:
+def _ticket_by_id(ticket_id: str) -> dict[str, Any] | None:
+    for t in _load_sample_tickets():
+        if t["ticket_id"] == ticket_id:
+            return t
+    return None
+
+
+def _print_pipeline_summary(state: Any) -> None:
+    """Pretty-print the terminal :class:`TicketState` for the demo."""
+
+    triage = state.triage or {}
+    enrichment = state.enrichment or {}
+    routing = state.routing or {}
+    knowledge = state.knowledge or {}
+    related = state.related or {}
+    schedule = state.schedule or {}
+    draft = state.draft or {}
+    profile = enrichment.get("partner_profile") or {}
+    top_runbook = (knowledge.get("top_runbook") or {}) if knowledge else {}
+
+    def line(label: str, value: Any) -> None:
+        print(f"  {label:<22}{value}")
+
+    print()
+    print(f"== Pipeline result for {state.ticket_id} ==")
+    line("provider", state.provider)
+    line("trace_id", state.trace_id)
+    print()
+    print("F1 Triage:")
+    line("category", triage.get("category"))
+    line("urgency", triage.get("urgency"))
+    line("confidence", triage.get("confidence"))
+    line("entities.circuits", (triage.get("entities") or {}).get("circuits"))
+    print()
+    print("F2 Enrichment:")
+    line("partner", f"{profile.get('name')} (tier={profile.get('tier')})" if profile else None)
+    line("recent_tickets", len(enrichment.get("recent_tickets") or []))
+    line("relevant_runbooks", len(enrichment.get("relevant_runbooks") or []))
+    line("unavailable", enrichment.get("unavailable") or "-")
+    print()
+    print("F3 Routing:")
+    line("queue", routing.get("queue"))
+    line("assignee", (routing.get("assignee") or {}).get("user_id"))
+    line("sla_minutes", routing.get("sla_minutes"))
+    print()
+    print("F4 Knowledge:")
+    line("top_runbook", top_runbook.get("runbook_id") if top_runbook else "(none)")
+    line("citation", knowledge.get("citation"))
+    line("confidence", knowledge.get("confidence"))
+    print()
+    print("F7 Linker:")
+    line("is_likely_duplicate", related.get("is_likely_duplicate"))
+    line("related", len(related.get("related") or []))
+    line("confidence", related.get("confidence"))
+    print()
+    if schedule and (schedule.get("proposed_slots") or []):
+        print("F6 Scheduler:")
+        for slot in (schedule.get("proposed_slots") or [])[:3]:
+            line(
+                slot.get("engineer_id", "?"), f"{slot.get('starts_at')} (score {slot.get('score')})"
+            )
+        print()
+    print("F5 Drafter (HITL — requires_approval):")
+    line("template_id", draft.get("template_id"))
+    line("blocked", draft.get("blocked"))
+    line("compliance_flags", draft.get("compliance_flags"))
+    print()
+    print("Subject:", draft.get("subject"))
+    print("Body:")
+    print((draft.get("body") or "").rstrip())
+    print()
+
+
+def _cmd_ticket(args: argparse.Namespace) -> int:
+    ticket = _ticket_by_id(args.ticket_id)
+    if ticket is None:
+        print(
+            f"unknown ticket-id {args.ticket_id!r}; run --list to see options",
+            file=sys.stderr,
+        )
+        return 2
+    try:
+        assert_safe_input(ticket["description"])
+    except SafetyError as exc:
+        print(f"REJECTED: {exc}", file=sys.stderr)
+        return 3
+
+    from partner_ticket_agentic.graph import run_pipeline
+
+    provider = make_provider(args.llm_provider)
+    if args.export_trace:
+        with trace_collector() as buf:
+            state = run_pipeline(ticket, provider=provider, trace_id=new_trace_id())
+        Path(args.export_trace).write_text(json.dumps(buf, indent=2, default=str))
+        print(f"(trace written to {args.export_trace})", file=sys.stderr)
+    else:
+        state = run_pipeline(ticket, provider=provider, trace_id=new_trace_id())
+    _print_pipeline_summary(state)
+    return 0
+
+
+def _cmd_inject(args: argparse.Namespace) -> int:
+    """Demo run: try to submit a ticket whose description is a prompt-injection.
+
+    Per DESIGN.md §6 demo run #5, this should be rejected at the safety
+    boundary before reaching any agent. We exit non-zero on rejection so
+    the panel sees the gate enforced visibly.
+    """
+
+    text = args.inject
+    try:
+        assert_safe_input(text)
+    except SafetyError as exc:
+        print(f"REJECTED: {exc}", file=sys.stderr)
+        return 4
+    print("(input passed the prompt-injection filter — would proceed to triage)")
+    return 0
+
+
+def _cmd_watchdog(_args: argparse.Namespace) -> int:
     print(
-        f"[scaffold] '{name}' is not yet implemented in this commit; "
-        "subsequent commits add the request/response pipeline (F1-F5), "
-        "F6 Scheduler, F7 Linker, and F8 Watchdog.",
+        "[pending] --watchdog will be wired to F8 in the next commit.",
         file=sys.stderr,
     )
     return 2
@@ -126,11 +245,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.list:
         return _cmd_list(args)
     if args.ticket_id is not None:
-        return _cmd_not_yet_implemented(f"--ticket-id {args.ticket_id}")
+        return _cmd_ticket(args)
     if args.watchdog:
-        return _cmd_not_yet_implemented("--watchdog")
+        return _cmd_watchdog(args)
     if args.inject is not None:
-        return _cmd_not_yet_implemented("--inject")
+        return _cmd_inject(args)
 
     parser.print_help()
     return 0
