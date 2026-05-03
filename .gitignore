@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Test / lint caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# uv: lockfile is committed for reproducible installs (application, not library).
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project-local persistence
+.ptag/
+*.db
+*.sqlite
+*.sqlite3
+*.faiss
+*.index
+
+# Trace exports / scratch
+traces/
+scratch/
+
+# Claude Code planning artifacts (kept local, not part of the public repo)
+.planning/
