@@ -52,8 +52,14 @@ from partner_ticket_agentic.agents.triage import (
     run_triage,
     triage_node,
 )
+from partner_ticket_agentic.agents.watchdog import (
+    AtRiskItem,
+    WatchdogReport,
+    run_watchdog_once,
+)
 
 __all__ = [
+    "AtRiskItem",
     "DrafterOutput",
     "EnrichmentOutput",
     "KnowledgeOutput",
@@ -61,6 +67,7 @@ __all__ = [
     "RoutingOutput",
     "SchedulerOutput",
     "TriageOutput",
+    "WatchdogReport",
     "drafter_node",
     "enricher_node",
     "knowledge_node",
@@ -73,6 +80,7 @@ __all__ = [
     "run_router",
     "run_scheduler",
     "run_triage",
+    "run_watchdog_once",
     "scheduler_node",
     "triage_node",
 ]

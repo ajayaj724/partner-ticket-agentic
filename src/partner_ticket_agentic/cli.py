@@ -185,12 +185,33 @@ def _cmd_inject(args: argparse.Namespace) -> int:
     return 0
 
 
-def _cmd_watchdog(_args: argparse.Namespace) -> int:
-    print(
-        "[pending] --watchdog will be wired to F8 in the next commit.",
-        file=sys.stderr,
-    )
-    return 2
+def _cmd_watchdog(args: argparse.Namespace) -> int:
+    """Run one F8 Watchdog scan and print the report."""
+
+    from partner_ticket_agentic.agents.watchdog import run_watchdog_once
+
+    provider = make_provider(args.llm_provider)
+    report = run_watchdog_once(provider=provider)
+    print()
+    print("== F8 Watchdog scan ==")
+    print(f"  scanned        {report.scanned}")
+    print(f"  at_risk        {len(report.at_risk)}")
+    print(f"  notified       {report.notified}")
+    print(f"  escalated      {report.escalated}")
+    print(f"  deduplicated   {report.deduplicated}")
+    print()
+    if not report.at_risk:
+        print("(no tickets at risk)")
+        return 0
+    print("At-risk tickets:")
+    for item in report.at_risk:
+        print(
+            f"  {item.ticket_id:<12} {item.queue:<14} "
+            f"elapsed={item.elapsed_minutes}m / sla={item.sla_minutes}m "
+            f"risk={item.risk:.2f} band={item.risk_band:<4} "
+            f"action={item.action_taken}"
+        )
+    return 0
 
 
 def build_parser() -> argparse.ArgumentParser:

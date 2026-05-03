@@ -21,6 +21,8 @@ from partner_ticket_agentic.tools import (  # noqa: F401
     crm,
     directory,
     inventory,
+    oncall,
+    open_tickets,
     runbook,
     templates,
     ticket_history,
