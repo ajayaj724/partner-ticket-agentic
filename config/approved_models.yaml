@@ -1,0 +1,34 @@
+# Approved-model list per DESIGN.md §4.5 (Governance).
+#
+# Agents pick an LLM tier based on the task (small for classification, medium
+# for drafts, large for ambiguous reasoning). Each provider × tier resolves to
+# a concrete model here. Providers reject unapproved (provider, tier) combos
+# at runtime — so adding a new model requires editing this file, which makes
+# the model surface auditable.
+#
+# Tier semantics:
+#   small  -> classification, extraction, structured-output emits
+#   medium -> summaries, partner-facing drafts, runbook reasoning
+#   large  -> ambiguous reasoning, escalations, judgment calls
+#
+# Model IDs (anthropic) reflect Anthropic's January 2026 catalogue. Ollama
+# models assume `ollama serve` is running locally on :11434 with the listed
+# tags pulled.
+
+providers:
+  anthropic:
+    small: claude-haiku-4-5-20251001
+    medium: claude-sonnet-4-6
+    large: claude-opus-4-7
+
+  ollama:
+    small: llama3.2:3b
+    medium: llama3.1:8b
+    large: llama3.3:70b
+
+  mock:
+    # Mock provider doesn't call any model — tier is recorded only for trace
+    # parity with real providers. Listed here so registry lookups succeed.
+    small: mock-small
+    medium: mock-medium
+    large: mock-large

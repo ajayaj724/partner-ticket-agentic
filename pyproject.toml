@@ -72,6 +72,11 @@ filterwarnings = [
     "error",
     "ignore::DeprecationWarning:google.*",
     "ignore::PendingDeprecationWarning",
+    # FAISS bundles SWIG-generated bindings that emit benign DeprecationWarnings
+    # on import about SwigPyPacked/SwigPyObject/swigvarlink lacking __module__.
+    # We can't fix these upstream and they crash pytest under filterwarnings=error.
+    "ignore:builtin type Swig.*:DeprecationWarning",
+    "ignore:builtin type swigvarlink.*:DeprecationWarning",
 ]
 
 [dependency-groups]
