@@ -16,7 +16,14 @@ registration side effects run before any agent dispatches.
 from __future__ import annotations
 
 # Tool-implementation modules — import for the registration side effect.
-from partner_ticket_agentic.tools import crm, inventory, runbook, ticket_history  # noqa: F401
+from partner_ticket_agentic.tools import (  # noqa: F401
+    crm,
+    directory,
+    inventory,
+    runbook,
+    templates,
+    ticket_history,
+)
 from partner_ticket_agentic.tools.registry import (
     Tool,
     ToolDispatcher,

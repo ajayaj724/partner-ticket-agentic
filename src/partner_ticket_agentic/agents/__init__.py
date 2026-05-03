@@ -17,10 +17,25 @@ partner_ticket_agentic.agents`` is enough to wire every rule.
 
 from __future__ import annotations
 
+from partner_ticket_agentic.agents.drafter import (
+    DrafterOutput,
+    drafter_node,
+    run_drafter,
+)
 from partner_ticket_agentic.agents.enricher import (
     EnrichmentOutput,
     enricher_node,
     run_enricher,
+)
+from partner_ticket_agentic.agents.knowledge import (
+    KnowledgeOutput,
+    knowledge_node,
+    run_knowledge,
+)
+from partner_ticket_agentic.agents.router import (
+    RoutingOutput,
+    router_node,
+    run_router,
 )
 from partner_ticket_agentic.agents.triage import (
     TriageOutput,
@@ -29,10 +44,19 @@ from partner_ticket_agentic.agents.triage import (
 )
 
 __all__ = [
+    "DrafterOutput",
     "EnrichmentOutput",
+    "KnowledgeOutput",
+    "RoutingOutput",
     "TriageOutput",
+    "drafter_node",
     "enricher_node",
+    "knowledge_node",
+    "router_node",
+    "run_drafter",
     "run_enricher",
+    "run_knowledge",
+    "run_router",
     "run_triage",
     "triage_node",
 ]
