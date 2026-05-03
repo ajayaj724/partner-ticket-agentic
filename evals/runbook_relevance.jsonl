@@ -1,0 +1,15 @@
+{"id": "rb-001", "query": "circuit outage from partner CIRC-44781", "expected_runbook_id": "RB-001"}
+{"id": "rb-002", "query": "appointment reschedule APT-20460 Thursday", "expected_runbook_id": "RB-002"}
+{"id": "rb-003", "query": "invoice INV-2026-0412 mismatch with contract rate billing", "expected_runbook_id": "RB-003"}
+{"id": "rb-004", "query": "new 1Gbps provisioning circuit Ghent go-live", "expected_runbook_id": "RB-004"}
+{"id": "rb-005", "query": "VLAN config change CRQ off-peak", "expected_runbook_id": "RB-005"}
+{"id": "rb-006", "query": "lost partner portal credentials password reset", "expected_runbook_id": "RB-006"}
+{"id": "rb-007", "query": "throughput degraded packet loss on circuit", "expected_runbook_id": "RB-007"}
+{"id": "rb-008", "query": "general partner question about support hours", "expected_runbook_id": "RB-008"}
+{"id": "rb-009", "query": "CIRC-66301 unreachable from NOC outage", "expected_runbook_id": "RB-001"}
+{"id": "rb-010", "query": "site visit APT-99001 schedule", "expected_runbook_id": "RB-002"}
+{"id": "rb-011", "query": "INV-2026-0298 billing query rate card", "expected_runbook_id": "RB-003"}
+{"id": "rb-012", "query": "provision a new line at Antwerp", "expected_runbook_id": "RB-004"}
+{"id": "rb-013", "query": "VLAN tagging change network engineering", "expected_runbook_id": "RB-005"}
+{"id": "rb-014", "query": "1.5% packet loss latency probe metrics", "expected_runbook_id": "RB-007"}
+{"id": "rb-015", "query": "expired credentials password partner portal", "expected_runbook_id": "RB-006"}

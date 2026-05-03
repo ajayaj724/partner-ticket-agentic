@@ -22,8 +22,14 @@ _log = get_logger("agents.linker")
 
 ALLOW_LIST = ToolAllowList.of("linker", "ticket_search_recent", "ticket_status_lookup")
 
-DUPLICATE_THRESHOLD = 0.65
-"""Cosine-similarity threshold for the "likely duplicate" verdict."""
+DUPLICATE_THRESHOLD = 0.30
+"""Cosine-similarity threshold for the "likely duplicate" verdict.
+
+Calibrated against ``evals/duplicate_pairs.jsonl`` for the deterministic
+FNV-1a feature-hashed embedder. With dense embeddings (Anthropic Voyage,
+Ollama nomic-embed-text) this would shift higher — keep it as a config
+knob rather than a hard-coded constant when you swap embedders.
+"""
 
 
 class LinkerOutput(BaseModel):

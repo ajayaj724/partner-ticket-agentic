@@ -1,0 +1,10 @@
+{"id": "br-001", "ticket_id": "T-BR-001", "elapsed_minutes": 5, "sla_minutes": 60, "urgency": "high", "expected_band": "low"}
+{"id": "br-002", "ticket_id": "T-BR-002", "elapsed_minutes": 35, "sla_minutes": 60, "urgency": "medium", "expected_band": "gray"}
+{"id": "br-003", "ticket_id": "T-BR-003", "elapsed_minutes": 55, "sla_minutes": 60, "urgency": "critical", "expected_band": "high"}
+{"id": "br-004", "ticket_id": "T-BR-004", "elapsed_minutes": 70, "sla_minutes": 60, "urgency": "high", "expected_band": "high"}
+{"id": "br-005", "ticket_id": "T-BR-005", "elapsed_minutes": 100, "sla_minutes": 480, "urgency": "medium", "expected_band": "low"}
+{"id": "br-006", "ticket_id": "T-BR-006", "elapsed_minutes": 360, "sla_minutes": 480, "urgency": "medium", "expected_band": "gray"}
+{"id": "br-007", "ticket_id": "T-BR-007", "elapsed_minutes": 460, "sla_minutes": 480, "urgency": "medium", "expected_band": "high"}
+{"id": "br-008", "ticket_id": "T-BR-008", "elapsed_minutes": 200, "sla_minutes": 240, "urgency": "high", "expected_band": "high"}
+{"id": "br-009", "ticket_id": "T-BR-009", "elapsed_minutes": 130, "sla_minutes": 240, "urgency": "high", "expected_band": "gray"}
+{"id": "br-010", "ticket_id": "T-BR-010", "elapsed_minutes": 30, "sla_minutes": 1440, "urgency": "low", "expected_band": "low"}

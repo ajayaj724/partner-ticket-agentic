@@ -1,0 +1,10 @@
+{"id": "dup-001", "partner_id": "P-1001", "subject": "Circuit CIRC-44781 outage update", "description": "any update on the circuit outage from earlier — CIRC-44781 still unreachable", "expected_is_duplicate": true}
+{"id": "dup-002", "partner_id": "P-1001", "subject": "CIRC-44782 packet loss again", "description": "we are seeing packet loss on CIRC-44782 again, similar to last quarter", "expected_is_duplicate": true}
+{"id": "dup-003", "partner_id": "P-1001", "subject": "Office wifi question", "description": "what is the password to the visitor wifi", "expected_is_duplicate": false}
+{"id": "dup-004", "partner_id": "P-1002", "subject": "Move APT-20210 again", "description": "rescheduling APT-20210 to next week, partner unavailable Tuesday again", "expected_is_duplicate": true}
+{"id": "dup-005", "partner_id": "P-1002", "subject": "New circuit", "description": "we are interested in provisioning a new circuit", "expected_is_duplicate": false}
+{"id": "dup-006", "partner_id": "P-1003", "subject": "Invoice rate-card mismatch INV-2026-0511", "description": "rate-card mismatch again, this time on INV-2026-0511", "expected_is_duplicate": true}
+{"id": "dup-007", "partner_id": "P-1003", "subject": "Need new credentials", "description": "lost the partner portal password, please reset", "expected_is_duplicate": true}
+{"id": "dup-008", "partner_id": "P-1003", "subject": "Site outage", "description": "circuit outage at the main site", "expected_is_duplicate": false}
+{"id": "dup-009", "partner_id": "P-1004", "subject": "CIRC-77410 commissioning", "description": "any update on the CIRC-77410 commissioning; SLA window?", "expected_is_duplicate": true}
+{"id": "dup-010", "partner_id": "P-1004", "subject": "Office relocation", "description": "we are moving offices next month", "expected_is_duplicate": false}

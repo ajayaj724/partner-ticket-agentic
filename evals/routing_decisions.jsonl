@@ -1,0 +1,15 @@
+{"id": "rt-001", "ticket_id": "T-RT-001", "partner_id": "P-1001", "subject": "Circuit CIRC-44781 down", "description": "circuit unreachable since 09:14 outage", "expected_queue": "NOC-L2"}
+{"id": "rt-002", "ticket_id": "T-RT-002", "partner_id": "P-1002", "subject": "Reschedule appointment APT-20460", "description": "move APT-20460 from Tuesday afternoon to Thursday morning", "expected_queue": "DISPATCH"}
+{"id": "rt-003", "ticket_id": "T-RT-003", "partner_id": "P-1003", "subject": "Invoice INV-2026-0412 wrong", "description": "April invoice INV-2026-0412 shows EUR 1240 but contract is 980 billing", "expected_queue": "FIN-OPS"}
+{"id": "rt-004", "ticket_id": "T-RT-004", "partner_id": "P-1004", "subject": "New circuit provisioning request Ghent", "description": "provision a new 1Gbps circuit at Korenmarkt 12, 9000 Ghent go-live mid-June", "expected_queue": "PROVISIONING"}
+{"id": "rt-005", "ticket_id": "T-RT-005", "partner_id": "P-1001", "subject": "Slow throughput CIRC-44782", "description": "throughput degraded; 2% packet loss between 08:00 and 11:00", "expected_queue": "NOC-L2"}
+{"id": "rt-006", "ticket_id": "T-RT-006", "partner_id": "P-1002", "subject": "Cancel APT-31002 appointment", "description": "please cancel the field engineer appointment APT-31002", "expected_queue": "DISPATCH"}
+{"id": "rt-007", "ticket_id": "T-RT-007", "partner_id": "P-1003", "subject": "Billing INV-2026-0298 query", "description": "we have a billing question on INV-2026-0298 from March rate card", "expected_queue": "FIN-OPS"}
+{"id": "rt-008", "ticket_id": "T-RT-008", "partner_id": "P-1004", "subject": "Provision line in Antwerp", "description": "please provision a new line at Antwerp HQ", "expected_queue": "PROVISIONING"}
+{"id": "rt-009", "ticket_id": "T-RT-009", "partner_id": "P-1001", "subject": "Latency spikes on CIRC-66303", "description": "we are observing latency spikes and packet loss on CIRC-66303", "expected_queue": "NOC-L2"}
+{"id": "rt-010", "ticket_id": "T-RT-010", "partner_id": "P-1003", "subject": "Greeting", "description": "hello team", "expected_queue": "REVIEW"}
+{"id": "rt-011", "ticket_id": "T-RT-011", "partner_id": "P-1002", "subject": "Site visit APT-90901", "description": "need a site visit scheduled appointment APT-90901", "expected_queue": "DISPATCH"}
+{"id": "rt-012", "ticket_id": "T-RT-012", "partner_id": "P-1003", "subject": "Invoice INV-2026-0511 wrong", "description": "the latest invoice INV-2026-0511 has a billing mismatch with our rate card", "expected_queue": "FIN-OPS"}
+{"id": "rt-013", "ticket_id": "T-RT-013", "partner_id": "P-1001", "subject": "CIRC-44782 outage", "description": "circuit CIRC-44782 down since 10:00 outage", "expected_queue": "NOC-L2"}
+{"id": "rt-014", "ticket_id": "T-RT-014", "partner_id": "P-1004", "subject": "New provisioning Bruges", "description": "provision a new 1Gbps line at Bruges branch", "expected_queue": "PROVISIONING"}
+{"id": "rt-015", "ticket_id": "T-RT-015", "partner_id": "P-1002", "subject": "Holiday hours question", "description": "what are your support hours during the holiday", "expected_queue": "REVIEW"}
