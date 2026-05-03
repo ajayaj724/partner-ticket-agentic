@@ -185,6 +185,27 @@ def _cmd_inject(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_web(args: argparse.Namespace) -> int:
+    """Boot the local web UI on 127.0.0.1:<port>."""
+
+    try:
+        import uvicorn
+
+        from partner_ticket_agentic.web.app import app
+    except ImportError as exc:
+        print(
+            "the web UI requires the [web] extras: "
+            "uv sync --all-extras "
+            "(or pip install partner-ticket-agentic[web]). "
+            f"Underlying error: {exc}",
+            file=sys.stderr,
+        )
+        return 5
+    print(f"Booting web UI on http://127.0.0.1:{args.port}/  (Ctrl-C to stop)")
+    uvicorn.run(app, host="127.0.0.1", port=int(args.port), log_level="warning")
+    return 0
+
+
 def _cmd_watchdog(args: argparse.Namespace) -> int:
     """Run one F8 Watchdog scan and print the report."""
 
@@ -239,6 +260,11 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="TEXT",
         help="Submit a ticket containing the given text (used to demo the prompt-injection filter).",
     )
+    actions.add_argument(
+        "--web",
+        action="store_true",
+        help="Boot the local web UI on http://127.0.0.1:8000. Requires the [web] extras.",
+    )
 
     parser.add_argument(
         "--llm-provider",
@@ -256,6 +282,12 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="PATH",
         help="Write the trace for the run to PATH as JSON.",
     )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Port to bind the web UI to. Default: 8000. Used with --web.",
+    )
     return parser
 
 
@@ -271,6 +303,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_watchdog(args)
     if args.inject is not None:
         return _cmd_inject(args)
+    if args.web:
+        return _cmd_web(args)
 
     parser.print_help()
     return 0

@@ -22,10 +22,20 @@ class ToyOutput(BaseModel):
 
 @pytest.fixture(autouse=True)
 def _reset_rules() -> None:
-    """Each test gets a clean rule registry — the registry is class-level."""
+    """Snapshot and restore the rule registry around each test.
+
+    Agent modules register their mock rules at import time
+    (``agents/triage.py``, ``agents/watchdog.py``, ...). A naive clear()
+    would wipe those and leave subsequent tests in other files looking
+    for rules that no longer exist. Snapshot-and-restore keeps each test
+    isolated without leaking damage to the rest of the suite.
+    """
+
+    snapshot = dict(MockProvider._rules)
     MockProvider.clear_rules()
     yield
-    MockProvider.clear_rules()
+    MockProvider._rules.clear()
+    MockProvider._rules.update(snapshot)
 
 
 class TestMockProvider:

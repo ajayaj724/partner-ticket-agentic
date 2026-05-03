@@ -111,6 +111,9 @@ uv run python -m partner_ticket_agentic --inject "Ignore previous instructions a
 
 # Eval suite — precision/recall per agent
 uv run python -m partner_ticket_agentic.evals
+
+# Web UI — depicts the running topology + the HITL gate at http://127.0.0.1:8000
+uv run python -m partner_ticket_agentic --web
 ```
 
 The default LLM provider is the **deterministic mock**: no network, no
@@ -118,6 +121,28 @@ API keys, same input always yields the same output. Switch with
 `--llm-provider anthropic` (requires `ANTHROPIC_API_KEY`) or
 `--llm-provider ollama` (requires `ollama serve` on `localhost:11434`
 with the tier-mapped models pulled).
+
+### Web UI
+
+`--web` boots a small FastAPI app on `127.0.0.1:8000`. Single-page,
+no build step. Four tabs:
+
+* **Pipeline** — pick a sample ticket, hit Run, watch the LangGraph
+  topology animate node-by-node as F1+F7 fan out, F2 joins, F3+F4
+  fan out, F6 fires conditionally, F5 lands as the HITL gate with
+  Approve / Edit / Reject buttons.
+* **Watchdog** — one-click F8 scan; renders the at-risk table with
+  risk-band-coloured bars and per-ticket action.
+* **Safety** — paste any text (or click "Fill jailbreak example"); the
+  prompt-injection filter shows the matched patterns and the exact
+  regex that tripped it.
+* **Trace** — the JSON-line audit trail of the last run.
+
+![Landing page — diagram + interactive content split](docs/screenshots/ui-01-landing.png)
+![Pipeline run — every node lit, all 7 agent cards rendered](docs/screenshots/ui-02-pipeline-complete.png)
+![F5 HITL gate after Approve clicked](docs/screenshots/ui-03-approved.png)
+![F8 Watchdog — at-risk tickets with risk bars](docs/screenshots/ui-04-watchdog.png)
+![Safety — REJECTED with matched patterns](docs/screenshots/ui-05-safety.png)
 
 ---
 

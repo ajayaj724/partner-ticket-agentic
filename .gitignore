@@ -49,3 +49,6 @@ scratch/
 
 # Claude Code planning artifacts (kept local, not part of the public repo)
 .planning/
+
+# Playwright MCP session artifacts (used during local UI verification)
+.playwright-mcp/
