@@ -154,6 +154,44 @@ recent = store.recent("P-1001", limit=10)</div>
         episodic, semantic + lexical for long-term.</p>
     </div>
 
+    <figure class="diagram">
+      <svg viewBox="0 0 720 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three memory tiers — scope and lifetime">
+        <text x="60" y="22" class="label-sub" style="font-size:11px">SCOPE  ↓</text>
+        <text x="660" y="22" class="label-sub" style="font-size:11px">  LIFETIME →</text>
+
+        <g class="node">
+          <rect x="60" y="40" width="240" height="62" rx="4"/>
+          <text x="180" y="62" class="label">Working memory</text>
+          <text x="180" y="80" class="label-sub">one ticket flow</text>
+          <text x="180" y="94" class="label-sub label-accent">LangGraph TicketState</text>
+        </g>
+        <text x="480" y="76" class="label-sub" style="font-size:10px">seconds · in-memory · gone at end</text>
+
+        <g class="node accent">
+          <rect x="60" y="115" width="240" height="62" rx="4"/>
+          <text x="180" y="137" class="label label-accent">Episodic memory</text>
+          <text x="180" y="155" class="label-sub">per partner_id</text>
+          <text x="180" y="169" class="label-sub">SQLite · ~/.ptag/episodic.db</text>
+        </g>
+        <text x="480" y="151" class="label-sub" style="font-size:10px">days · weeks · across runs</text>
+
+        <g class="node">
+          <rect x="60" y="190" width="240" height="62" rx="4"/>
+          <text x="180" y="212" class="label">Long-term memory</text>
+          <text x="180" y="230" class="label-sub">org-wide</text>
+          <text x="180" y="244" class="label-sub">FAISS (vectors) + SQLite (facts)</text>
+        </g>
+        <text x="480" y="226" class="label-sub" style="font-size:10px">indefinite · indexed corpus</text>
+
+        <line x1="330" y1="72" x2="430" y2="72" stroke="#b8a982" stroke-width="1.5" stroke-dasharray="3 3"/>
+        <line x1="330" y1="146" x2="430" y2="146" stroke="#b8a982" stroke-width="1.5" stroke-dasharray="3 3"/>
+        <line x1="330" y1="220" x2="430" y2="220" stroke="#b8a982" stroke-width="1.5" stroke-dasharray="3 3"/>
+
+        <text x="380" y="265" class="label-sub label-accent" style="font-size:10px">never conflated · different access patterns · different lifecycles</text>
+      </svg>
+      <figcaption>Three tiers — kept separate so access control, GDPR erasure, and cost ownership are clean.</figcaption>
+    </figure>
+
     <h2>The rule: never conflate the tiers</h2>
 
     <p>The design doc names this explicitly: <em>"three memory tiers,

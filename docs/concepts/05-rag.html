@@ -152,6 +152,62 @@ The third is FAR (cosine similarity ~0.05).</div>
   ]
 }</div>
 
+    <figure class="diagram">
+      <svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hybrid retrieval flow: BM25 + dense + threshold">
+        <defs>
+          <marker id="arrow-05" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0,0 L10,5 L0,10 Z" fill="currentColor"></path>
+          </marker>
+        </defs>
+
+        <g class="node accent">
+          <rect x="40" y="120" width="120" height="44" rx="4"/>
+          <text x="100" y="140" class="label label-accent">query</text>
+          <text x="100" y="156" class="label-sub">"circuit outage"</text>
+        </g>
+
+        <g class="node">
+          <rect x="210" y="50" width="160" height="44" rx="4"/>
+          <text x="290" y="70" class="label">BM25 (lexical)</text>
+          <text x="290" y="86" class="label-sub">scores [0, ~10]</text>
+        </g>
+
+        <g class="node">
+          <rect x="210" y="190" width="160" height="44" rx="4"/>
+          <text x="290" y="210" class="label">FAISS (dense)</text>
+          <text x="290" y="226" class="label-sub">cosine [-1, 1]</text>
+        </g>
+
+        <g class="node">
+          <rect x="410" y="120" width="160" height="44" rx="4"/>
+          <text x="490" y="140" class="label">Min-max + blend</text>
+          <text x="490" y="156" class="label-sub">α·dense + (1-α)·bm25</text>
+        </g>
+
+        <g class="node">
+          <rect x="610" y="120" width="100" height="44" rx="4"/>
+          <text x="660" y="140" class="label">Top-k</text>
+          <text x="660" y="156" class="label-sub">k = 3</text>
+        </g>
+
+        <rect x="410" y="220" width="160" height="44" rx="4" fill="#fbf8f1" stroke="#b45309" stroke-width="1.5"/>
+        <text x="490" y="240" class="label" style="font-size:11px" fill="#8a5a00">below threshold?</text>
+        <text x="490" y="256" class="label-sub" fill="#8a5a00">→ "no high-conf match"</text>
+
+        <g class="edge" color="#a8741f">
+          <path d="M160 130 L210 75" marker-end="url(#arrow-05)"/>
+          <path d="M160 152 L210 215" marker-end="url(#arrow-05)"/>
+          <path d="M370 75 L420 125" marker-end="url(#arrow-05)"/>
+          <path d="M370 215 L420 160" marker-end="url(#arrow-05)"/>
+          <path d="M570 142 L610 142" marker-end="url(#arrow-05)"/>
+        </g>
+        <g class="edge dashed" color="#8a5a00">
+          <path d="M490 164 L490 220" marker-end="url(#arrow-05)"/>
+        </g>
+      </svg>
+      <figcaption>Hybrid retrieval — BM25 + dense, blended; below confidence threshold, fall back rather than guess.</figcaption>
+    </figure>
+
     <h2>The "rerank" step (and why it matters)</h2>
 
     <p>Top-k retrieval gives you the rough candidates. But the

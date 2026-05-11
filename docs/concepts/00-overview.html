@@ -42,6 +42,62 @@
       Anthropic and Ollama providers are opt-in. The whole demo fits
       in three commands.</p>
 
+    <figure class="diagram">
+      <svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Supplier-side ticketing workflow">
+        <defs>
+          <marker id="arrow-00" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0,0 L10,5 L0,10 Z" fill="currentColor"></path>
+          </marker>
+        </defs>
+
+        <!-- Boxes -->
+        <g class="node">
+          <rect x="20" y="40" width="120" height="60" rx="4"/>
+          <text x="80" y="64" class="label">Issue detected</text>
+          <text x="80" y="82" class="label-sub">monitoring / customer</text>
+        </g>
+
+        <g class="node accent">
+          <rect x="170" y="40" width="160" height="60" rx="4"/>
+          <text x="250" y="64" class="label label-accent">We file ticket</text>
+          <text x="250" y="82" class="label-sub">→ to partner</text>
+        </g>
+
+        <g class="node">
+          <rect x="360" y="40" width="160" height="60" rx="4"/>
+          <text x="440" y="64" class="label">Appointment booked</text>
+          <text x="440" y="82" class="label-sub">partner schedules</text>
+        </g>
+
+        <g class="node">
+          <rect x="550" y="40" width="150" height="60" rx="4"/>
+          <text x="625" y="64" class="label">Technician visits</text>
+          <text x="625" y="82" class="label-sub">on-site fix</text>
+        </g>
+
+        <!-- Edges (top row) -->
+        <g class="edge" color="#a8741f">
+          <path d="M140 70 L170 70" marker-end="url(#arrow-00)"/>
+          <path d="M330 70 L360 70" marker-end="url(#arrow-00)"/>
+          <path d="M520 70 L550 70" marker-end="url(#arrow-00)"/>
+        </g>
+
+        <!-- Loop back -->
+        <g class="edge dashed" color="#b8a982">
+          <path d="M625 100 L625 150 L80 150 L80 100" marker-end="url(#arrow-00)"/>
+        </g>
+        <text x="350" y="170" class="label-sub">close ticket</text>
+
+        <!-- Highlight: this is where our system lives -->
+        <g>
+          <rect x="170" y="190" width="160" height="24" rx="3" class="node accent" stroke="none" fill="#f0e1c4"/>
+          <text x="250" y="206" class="label label-accent" style="font-size:11px">8 agents automate this step</text>
+        </g>
+        <path d="M250 100 L250 190" stroke="#a8741f" stroke-width="1.5" stroke-dasharray="3 3" fill="none" marker-end="url(#arrow-00)" color="#a8741f"/>
+      </svg>
+      <figcaption>Supplier-side ticketing workflow — our agentic system sits on the &ldquo;we file ticket&rdquo; step.</figcaption>
+    </figure>
+
     <h2>The before-and-after</h2>
 
     <h3>Before (the shipped project)</h3>

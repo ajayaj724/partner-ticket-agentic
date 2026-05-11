@@ -29,6 +29,65 @@
 
   <article>
 
+    <figure class="diagram">
+      <svg viewBox="0 0 720 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Anatomy of an agent">
+        <defs>
+          <marker id="arrow-02" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0,0 L10,5 L0,10 Z" fill="currentColor"></path>
+          </marker>
+        </defs>
+
+        <rect x="100" y="30" width="520" height="200" rx="6" fill="#f0e1c4" stroke="#a8741f" stroke-width="2"/>
+        <text x="360" y="50" class="label label-accent" style="font-size:13px">AGENT (one job)</text>
+
+        <g class="node">
+          <rect x="20" y="120" width="80" height="38" rx="3"/>
+          <text x="60" y="139" class="label" style="font-size:12px">input</text>
+        </g>
+
+        <g class="node">
+          <rect x="130" y="75" width="120" height="38" rx="3"/>
+          <text x="190" y="94" class="label" style="font-size:11px">Pydantic IN</text>
+        </g>
+
+        <g class="node accent">
+          <rect x="280" y="75" width="170" height="38" rx="3"/>
+          <text x="365" y="94" class="label label-accent" style="font-size:11px">LLM (system + user)</text>
+        </g>
+
+        <g class="node muted">
+          <rect x="480" y="75" width="120" height="38" rx="3"/>
+          <text x="540" y="94" class="label" style="font-size:11px">tools</text>
+        </g>
+        <text x="540" y="65" class="label-sub" style="font-size:9px">allow-listed</text>
+
+        <g class="node">
+          <rect x="280" y="170" width="170" height="38" rx="3"/>
+          <text x="365" y="189" class="label" style="font-size:11px">Pydantic OUT</text>
+        </g>
+
+        <g class="node">
+          <rect x="630" y="120" width="80" height="38" rx="3"/>
+          <text x="670" y="139" class="label" style="font-size:12px">output</text>
+        </g>
+
+        <g class="edge" color="#a8741f">
+          <path d="M100 139 L130 95" marker-end="url(#arrow-02)"/>
+          <path d="M250 95 L280 95" marker-end="url(#arrow-02)"/>
+          <path d="M450 95 L480 95" marker-end="url(#arrow-02)" stroke-dasharray="4 3"/>
+          <path d="M540 113 L540 135 L450 189" marker-end="url(#arrow-02)" stroke-dasharray="4 3"/>
+          <path d="M365 113 L365 170" marker-end="url(#arrow-02)"/>
+          <path d="M450 189 L630 139" marker-end="url(#arrow-02)"/>
+        </g>
+
+        <text x="200" y="250" class="label-sub" style="font-size:10px">→ rejects misshapen input</text>
+        <text x="365" y="250" class="label-sub label-accent" style="font-size:10px">→ decides content</text>
+        <text x="550" y="250" class="label-sub" style="font-size:10px">→ dispatches actions (optional)</text>
+        <text x="365" y="268" class="label-sub" style="font-size:10px">→ rejects misshapen output (typed contract)</text>
+      </svg>
+      <figcaption>Anatomy of one agent — a typed function with an LLM at its heart and tools at its hands.</figcaption>
+    </figure>
+
     <h2>The shortest possible definition</h2>
 
     <p>An <strong>agent</strong> is a small piece of software that:</p>

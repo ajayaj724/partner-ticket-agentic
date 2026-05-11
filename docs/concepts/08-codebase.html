@@ -120,6 +120,97 @@
 │
 └── evals/__main__.py           ← `python -m partner_ticket_agentic.evals`</div>
 
+    <figure class="diagram">
+      <svg viewBox="0 0 720 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Module dependencies in src/partner_ticket_agentic">
+        <defs>
+          <marker id="arrow-08" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0,0 L10,5 L0,10 Z" fill="currentColor"></path>
+          </marker>
+        </defs>
+
+        <!-- Entry -->
+        <g class="node accent">
+          <rect x="280" y="20" width="160" height="40" rx="3"/>
+          <text x="360" y="44" class="label label-accent">cli.py</text>
+        </g>
+
+        <!-- Graph -->
+        <g class="node">
+          <rect x="280" y="90" width="160" height="40" rx="3"/>
+          <text x="360" y="114" class="label">graph.py</text>
+        </g>
+
+        <!-- Agents -->
+        <g class="node">
+          <rect x="40" y="170" width="160" height="40" rx="3"/>
+          <text x="120" y="187" class="label">agents/*</text>
+          <text x="120" y="203" class="label-sub">F1 - F8</text>
+        </g>
+
+        <!-- Memory -->
+        <g class="node">
+          <rect x="220" y="170" width="160" height="40" rx="3"/>
+          <text x="300" y="187" class="label">memory/*</text>
+          <text x="300" y="203" class="label-sub">working · episodic · longterm</text>
+        </g>
+
+        <!-- Tools -->
+        <g class="node">
+          <rect x="400" y="170" width="160" height="40" rx="3"/>
+          <text x="480" y="187" class="label">tools/*</text>
+          <text x="480" y="203" class="label-sub">registry · policy</text>
+        </g>
+
+        <!-- Providers -->
+        <g class="node">
+          <rect x="580" y="170" width="120" height="40" rx="3"/>
+          <text x="640" y="187" class="label">providers/*</text>
+          <text x="640" y="203" class="label-sub">mock · anthropic · ollama</text>
+        </g>
+
+        <!-- Cross-cutting -->
+        <g class="node muted">
+          <rect x="40" y="260" width="120" height="40" rx="3"/>
+          <text x="100" y="277" class="label" style="font-size:11px">obs.py</text>
+          <text x="100" y="291" class="label-sub">JSON-line + OTel</text>
+        </g>
+
+        <g class="node muted">
+          <rect x="180" y="260" width="120" height="40" rx="3"/>
+          <text x="240" y="277" class="label" style="font-size:11px">safety.py</text>
+          <text x="240" y="291" class="label-sub">filter + allow-list</text>
+        </g>
+
+        <g class="node muted">
+          <rect x="320" y="260" width="120" height="40" rx="3"/>
+          <text x="380" y="277" class="label" style="font-size:11px">cost.py</text>
+          <text x="380" y="291" class="label-sub">PRICING + budgets</text>
+        </g>
+
+        <g class="node muted">
+          <rect x="460" y="260" width="120" height="40" rx="3"/>
+          <text x="520" y="277" class="label" style="font-size:11px">mcp_server.py</text>
+          <text x="520" y="291" class="label-sub">tool surface</text>
+        </g>
+
+        <g class="node muted">
+          <rect x="600" y="260" width="100" height="40" rx="3"/>
+          <text x="650" y="277" class="label" style="font-size:11px">web/</text>
+          <text x="650" y="291" class="label-sub">FastAPI</text>
+        </g>
+
+        <!-- Edges -->
+        <g class="edge" color="#a8741f">
+          <path d="M360 60 L360 90" marker-end="url(#arrow-08)"/>
+          <path d="M310 130 L150 170" marker-end="url(#arrow-08)"/>
+          <path d="M360 130 L300 170" marker-end="url(#arrow-08)"/>
+          <path d="M400 130 L470 170" marker-end="url(#arrow-08)"/>
+          <path d="M430 130 L620 170" marker-end="url(#arrow-08)"/>
+        </g>
+      </svg>
+      <figcaption>Module dependencies — cli boots graph; graph wires agents; agents use memory + tools; tools reach providers. Cross-cutting modules in the bottom row.</figcaption>
+    </figure>
+
     <h2>How to read the codebase (in order)</h2>
 
     <p>Don't read every file. Read these five in this order — that's

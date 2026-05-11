@@ -30,6 +30,93 @@
 
   <article>
 
+    <figure class="diagram">
+      <svg viewBox="0 0 760 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="LangGraph topology of the 8 agents">
+        <defs>
+          <marker id="arrow-03" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0,0 L10,5 L0,10 Z" fill="currentColor"></path>
+          </marker>
+        </defs>
+
+        <g class="node accent">
+          <ellipse cx="380" cy="36" rx="50" ry="20"/>
+          <text x="380" y="40" class="label label-accent" style="font-size:11px">START</text>
+        </g>
+
+        <g class="node">
+          <rect x="120" y="80" width="180" height="44" rx="4"/>
+          <text x="210" y="100" class="label">F1 Triage</text>
+          <text x="210" y="116" class="label-sub">tier · small</text>
+        </g>
+        <g class="node">
+          <rect x="460" y="80" width="180" height="44" rx="4"/>
+          <text x="550" y="100" class="label">F7 Linker</text>
+          <text x="550" y="116" class="label-sub">parallel with F1</text>
+        </g>
+
+        <g class="node">
+          <rect x="260" y="160" width="240" height="44" rx="4"/>
+          <text x="380" y="180" class="label">F2 Enricher</text>
+          <text x="380" y="196" class="label-sub">parallel tool fan-out · 4 tools</text>
+        </g>
+
+        <g class="node">
+          <rect x="120" y="240" width="180" height="44" rx="4"/>
+          <text x="210" y="260" class="label">F3 Router</text>
+          <text x="210" y="276" class="label-sub">queue · assignee</text>
+        </g>
+        <g class="node">
+          <rect x="460" y="240" width="180" height="44" rx="4"/>
+          <text x="550" y="260" class="label">F4 Knowledge</text>
+          <text x="550" y="276" class="label-sub">retrieve + rerank · cite</text>
+        </g>
+
+        <polygon points="380,310 440,340 380,370 320,340" fill="#fbf8f1" stroke="#6b6354" stroke-width="1.5"/>
+        <text x="380" y="345" class="label" style="font-size:11px">route?</text>
+
+        <g class="node muted">
+          <rect x="120" y="390" width="180" height="44" rx="4"/>
+          <text x="210" y="410" class="label">F6 Scheduler</text>
+          <text x="210" y="426" class="label-sub">if on-site</text>
+        </g>
+
+        <g class="node danger">
+          <rect x="460" y="390" width="220" height="44" rx="4"/>
+          <text x="570" y="410" class="label" fill="#7b2025">F5 Drafter — HITL</text>
+          <text x="570" y="426" class="label-sub" fill="#7b2025">requires_approval = true · always</text>
+        </g>
+
+        <g class="node">
+          <ellipse cx="380" cy="476" rx="50" ry="20"/>
+          <text x="380" y="480" class="label">END</text>
+        </g>
+
+        <g class="edge" color="#b8a982">
+          <path d="M345 50 L260 80" marker-end="url(#arrow-03)"/>
+          <path d="M415 50 L500 80" marker-end="url(#arrow-03)"/>
+          <path d="M260 124 L340 160" marker-end="url(#arrow-03)"/>
+          <path d="M500 124 L420 160" marker-end="url(#arrow-03)"/>
+          <path d="M340 204 L260 240" marker-end="url(#arrow-03)"/>
+          <path d="M420 204 L500 240" marker-end="url(#arrow-03)"/>
+          <path d="M260 284 L350 320" marker-end="url(#arrow-03)"/>
+          <path d="M500 284 L410 320" marker-end="url(#arrow-03)"/>
+          <path d="M340 360 L260 390" marker-end="url(#arrow-03)" stroke-dasharray="5 4"/>
+          <path d="M420 360 L500 390" marker-end="url(#arrow-03)" stroke-dasharray="5 4"/>
+          <path d="M300 412 L460 412" marker-end="url(#arrow-03)"/>
+          <path d="M500 434 L410 460" marker-end="url(#arrow-03)"/>
+        </g>
+
+        <g class="node muted">
+          <rect x="640" y="240" width="100" height="44" rx="4"/>
+          <text x="690" y="260" class="label" style="font-size:11px">F8 Watchdog</text>
+          <text x="690" y="276" class="label-sub">scheduled</text>
+        </g>
+        <text x="690" y="222" class="label-sub" style="font-size:9px">(every 5 min)</text>
+
+      </svg>
+      <figcaption>The actual LangGraph topology — fan-out, fan-in, conditional, HITL gate. F8 lives on its own schedule.</figcaption>
+    </figure>
+
     <h2>The problem orchestration solves</h2>
 
     <p>You have 8 agents. A new ticket arrives. Questions to answer:</p>

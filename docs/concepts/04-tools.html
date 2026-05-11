@@ -108,6 +108,68 @@ except ToolNotAllowedError:
         default, allow explicitly</em>.</p>
     </div>
 
+    <figure class="diagram">
+      <svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tool dispatch flow with allow-list and circuit breaker">
+        <defs>
+          <marker id="arrow-04" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0,0 L10,5 L0,10 Z" fill="currentColor"></path>
+          </marker>
+        </defs>
+
+        <g class="node accent">
+          <rect x="40" y="40" width="160" height="44" rx="4"/>
+          <text x="120" y="60" class="label label-accent">Agent calls tool</text>
+          <text x="120" y="76" class="label-sub">dispatcher.call(name)</text>
+        </g>
+
+        <g class="node">
+          <rect x="260" y="40" width="180" height="44" rx="4"/>
+          <text x="350" y="60" class="label">Allow-list check</text>
+          <text x="350" y="76" class="label-sub">ToolAllowList.check()</text>
+        </g>
+
+        <g class="node">
+          <rect x="500" y="40" width="180" height="44" rx="4"/>
+          <text x="590" y="60" class="label">Circuit-breaker check</text>
+          <text x="590" y="76" class="label-sub">CLOSED / OPEN / HALF</text>
+        </g>
+
+        <g class="node">
+          <rect x="260" y="140" width="180" height="44" rx="4"/>
+          <text x="350" y="160" class="label">Tool invocation</text>
+          <text x="350" y="176" class="label-sub">handler(**kwargs)</text>
+        </g>
+
+        <g class="node ok">
+          <rect x="500" y="140" width="180" height="44" rx="4"/>
+          <text x="590" y="160" class="label" fill="#2d5d2f">Success</text>
+          <text x="590" y="176" class="label-sub" fill="#2d5d2f">record_success()</text>
+        </g>
+
+        <g class="node danger">
+          <rect x="500" y="220" width="180" height="44" rx="4"/>
+          <text x="590" y="240" class="label" fill="#7b2025">Retry / fast-fail</text>
+          <text x="590" y="256" class="label-sub" fill="#7b2025">exp backoff → ToolError</text>
+        </g>
+
+        <g class="edge accent" color="#a8741f">
+          <path d="M200 62 L260 62" marker-end="url(#arrow-04)"/>
+          <path d="M440 62 L500 62" marker-end="url(#arrow-04)"/>
+          <path d="M590 84 L590 110 L350 110 L350 140" marker-end="url(#arrow-04)"/>
+          <path d="M440 162 L500 162" marker-end="url(#arrow-04)"/>
+        </g>
+        <g class="edge dashed" color="#7b2025">
+          <path d="M440 175 L500 230" marker-end="url(#arrow-04)"/>
+        </g>
+
+        <text x="450" y="100" class="label-sub" style="font-size:9px">deny → ToolNotAllowedError</text>
+        <text x="640" y="100" class="label-sub" style="font-size:9px">open → CircuitOpenError</text>
+        <text x="475" y="138" class="label-sub" style="font-size:9px">happy path</text>
+        <text x="475" y="195" class="label-sub" style="font-size:9px">on exception</text>
+      </svg>
+      <figcaption>Tool dispatch — two gates (allow-list, circuit breaker) before the tool runs; retry + circuit-record after.</figcaption>
+    </figure>
+
     <h2>Two other tool-design choices that matter</h2>
 
     <h3>1. Idempotency keys on side-effecting tools</h3>

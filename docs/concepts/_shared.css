@@ -443,6 +443,89 @@ strong, b { color: var(--ink); font-weight: 600; }
   margin: 0;
 }
 
+/* ============================================================ Flow diagrams */
+
+figure.diagram {
+  margin: 28px 0;
+  padding: 0;
+}
+
+figure.diagram svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--paper-card);
+  border: 1px solid var(--rule);
+  padding: 18px 14px;
+}
+
+figure.diagram figcaption {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  text-align: center;
+  margin-top: 10px;
+}
+
+figure.diagram svg .node {
+  fill: var(--paper-card);
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+
+figure.diagram svg .node.accent {
+  fill: var(--accent-soft);
+  stroke: var(--accent);
+}
+
+figure.diagram svg .node.danger {
+  fill: var(--danger-soft);
+  stroke: var(--danger);
+}
+
+figure.diagram svg .node.ok {
+  fill: var(--ok-soft);
+  stroke: var(--ok);
+}
+
+figure.diagram svg .node.muted {
+  fill: var(--bg);
+  stroke: var(--rule-strong);
+  stroke-dasharray: 4 3;
+}
+
+figure.diagram svg .label {
+  fill: var(--ink);
+  font-family: "IBM Plex Sans", sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+figure.diagram svg .label-sub {
+  fill: var(--muted);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+figure.diagram svg .label-accent {
+  fill: var(--accent-deep);
+}
+
+figure.diagram svg .edge {
+  fill: none;
+  stroke: var(--rule-strong);
+  stroke-width: 1.5;
+}
+
+figure.diagram svg .edge.accent { stroke: var(--accent); }
+figure.diagram svg .edge.dashed { stroke-dasharray: 5 4; }
+
 /* ============================================================ Footer */
 
 .foot {
