@@ -35,6 +35,57 @@ class TestInjectionFilter:
         assert findings
 
 
+class TestPIIDetection:
+    def test_clean_text_has_no_findings(self) -> None:
+        from partner_ticket_agentic.safety import detect_pii
+
+        assert detect_pii("circuit CIRC-44781 is down since 09:14") == []
+
+    def test_email_detected(self) -> None:
+        from partner_ticket_agentic.safety import detect_pii
+
+        findings = detect_pii("contact ops@brusselsnet.example.be for status")
+        assert any(f.kind == "email" and "ops@brusselsnet.example.be" in f.match for f in findings)
+
+    def test_belgian_phone_detected(self) -> None:
+        from partner_ticket_agentic.safety import detect_pii
+
+        findings = detect_pii("call us on +32 2 555 0101 during business hours")
+        assert any(f.kind == "phone_be" for f in findings)
+
+    def test_belgian_iban_detected(self) -> None:
+        from partner_ticket_agentic.safety import detect_pii
+
+        findings = detect_pii("settled to BE68 5390 0754 7034 last week")
+        assert any(f.kind == "iban_be" for f in findings)
+
+    def test_ipv4_detected(self) -> None:
+        from partner_ticket_agentic.safety import detect_pii
+
+        findings = detect_pii("probe failed from 10.0.0.42 to the edge router")
+        assert any(f.kind == "ipv4" and f.match == "10.0.0.42" for f in findings)
+
+    def test_redact_replaces_with_kind_tag(self) -> None:
+        from partner_ticket_agentic.safety import redact_pii_for_logging
+
+        redacted, findings = redact_pii_for_logging(
+            "ops@brusselsnet.example.be called from +32 2 555 0101"
+        )
+        assert "ops@brusselsnet.example.be" not in redacted
+        assert "+32 2 555 0101" not in redacted
+        assert "[REDACTED:email]" in redacted
+        assert "[REDACTED:phone_be]" in redacted
+        assert len(findings) >= 2
+
+    def test_redact_no_pii_returns_input(self) -> None:
+        from partner_ticket_agentic.safety import redact_pii_for_logging
+
+        text = "circuit CIRC-44781 is down"
+        redacted, findings = redact_pii_for_logging(text)
+        assert redacted == text
+        assert findings == []
+
+
 class TestToolAllowList:
     def test_check_passes_for_allowed_tool(self) -> None:
         allow = ToolAllowList.of("triage", "crm_lookup_partner")

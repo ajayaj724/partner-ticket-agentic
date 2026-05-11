@@ -55,6 +55,13 @@ class TicketState(BaseModel):
     # independent of the cost module's class.
     cost: dict[str, Any] | None = None
 
+    # ---- PII findings at ingest (slide 18 of the deck) ---------------------
+    # One entry per detected span: {"kind": "email", "match": "..."}.
+    # Agents still see the original description; this list is the audit
+    # surface so a reviewer can confirm what was detected without the
+    # original PII appearing in trace exports.
+    pii_findings: list[dict[str, str]] = Field(default_factory=list)
+
     @classmethod
     def from_ticket(cls, ticket: dict[str, Any]) -> TicketState:
         """Construct an initial state from a ticket dict (e.g., seed data)."""

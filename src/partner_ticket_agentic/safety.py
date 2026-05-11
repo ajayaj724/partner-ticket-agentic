@@ -133,3 +133,75 @@ def assert_safe_input(text: str) -> None:
     if findings:
         rendered = "; ".join(str(f) for f in findings)
         raise SafetyError(f"input failed prompt-injection filter: {rendered}")
+
+
+# --- PII detection + redaction (deck slide 18) -------------------------------
+#
+# Belgian-telecom defaults: e-mail addresses, phone numbers (international
+# and national), IBAN (BE-prefixed), and IPv4 addresses. The patterns are
+# deliberately tight — the cost of a false-positive on a ticket description
+# is a redacted token in the log; the cost of a false-negative is a PII
+# leak in audit storage. Production deployments would layer a managed
+# detector (Presidio, AWS Comprehend, Google DLP) on top.
+
+_PII_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("email", re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")),
+    # Belgian phone: +32 ... or 0... with 2-3 digit area code + 6-7 digit body.
+    ("phone_be", re.compile(r"(?:\+32[\s.-]?\d|0\d)(?:[\s.-]?\d){7,9}")),
+    # International phone: +<country code 1-3> followed by 7-12 digits.
+    ("phone_intl", re.compile(r"\+\d{1,3}[\s.-]?\d{2,4}[\s.-]?\d{3,4}[\s.-]?\d{3,4}")),
+    # Belgian IBAN: BE + 2 check digits + 12 digits (with optional spaces).
+    ("iban_be", re.compile(r"\bBE\d{2}(?:[\s]?\d{4}){3}\b")),
+    # IPv4 — useful for telecom network leaks.
+    ("ipv4", re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")),
+)
+
+
+@dataclass(frozen=True, slots=True)
+class PIIFinding:
+    """A single PII match with its category and the substring that triggered it."""
+
+    kind: str
+    match: str
+
+    def __str__(self) -> str:
+        return f"{self.kind}={self.match!r}"
+
+
+def detect_pii(text: str) -> list[PIIFinding]:
+    """Return all PII findings for ``text`` — empty list means "no PII".
+
+    Pure and side-effect free. ``redact_pii_for_logging`` consumes this
+    function for the actual masking. Used at the ingest boundary (in
+    :func:`partner_ticket_agentic.graph.run_pipeline`) so the trace
+    records what was detected before the agents see it.
+    """
+
+    if not text:
+        return []
+    findings: list[PIIFinding] = []
+    for kind, pat in _PII_PATTERNS:
+        for m in pat.finditer(text):
+            findings.append(PIIFinding(kind=kind, match=m.group(0)))
+    return findings
+
+
+def redact_pii_for_logging(text: str) -> tuple[str, list[PIIFinding]]:
+    """Return ``(redacted_text, findings)`` — replace every PII span with a tag.
+
+    Used for log records and trace exports. Agents still receive the
+    original text (per DESIGN.md §4.2 — they need real content to
+    operate); only the audit surface sees the masked version. The
+    replacement tag preserves the *kind* of PII so a reviewer reading the
+    log knows what was redacted without seeing the value.
+    """
+
+    if not text:
+        return text, []
+    findings = detect_pii(text)
+    redacted = text
+    # Apply longest matches first to avoid partial overlap collisions
+    # (e.g., an IBAN containing what looks like a phone fragment).
+    for f in sorted(findings, key=lambda x: -len(x.match)):
+        redacted = redacted.replace(f.match, f"[REDACTED:{f.kind}]")
+    return redacted, findings

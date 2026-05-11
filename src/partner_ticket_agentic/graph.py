@@ -106,15 +106,32 @@ def run_pipeline(
     """Run a single ticket through the full pipeline and return the final state."""
 
     from partner_ticket_agentic.cost import CostLedger, bind_ledger
+    from partner_ticket_agentic.safety import detect_pii
 
     trace_id = trace_id or new_trace_id()
+    # Detect PII in the partner-supplied description at the ingest
+    # boundary (deck slide 18). Findings are attached to the state so
+    # the trace and web UI can surface them; the description itself is
+    # left untouched because the downstream agents need the real text
+    # to operate (entities, runbook matching, etc.).
+    pii = detect_pii(ticket.get("description", ""))
     initial = TicketState.from_ticket(ticket).model_copy(
-        update={"trace_id": trace_id, "provider": (provider.name if provider else "mock")}
+        update={
+            "trace_id": trace_id,
+            "provider": (provider.name if provider else "mock"),
+            "pii_findings": [{"kind": p.kind, "match": p.match} for p in pii],
+        }
     )
     runnable = build_graph(provider=provider)
     ledger = CostLedger()
     with bind_log_context(trace_id=trace_id, ticket_id=ticket["ticket_id"]), bind_ledger(ledger):
-        _log.info("pipeline_start")
+        _log.info(
+            "pipeline_start",
+            extra={
+                "pii_findings_count": len(pii),
+                "pii_kinds": sorted({p.kind for p in pii}),
+            },
+        )
         result = runnable.invoke(initial)
         _log.info(
             "pipeline_done",
