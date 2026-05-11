@@ -21,9 +21,10 @@ classifiers = [
 # resolutions and miss the next batch of bug-fix releases. Each floor is
 # the lowest version we've tested against; the resolver may install newer.
 dependencies = [
-    "langgraph>=1.0",        # 1.0 stable; current 1.1.x
-    "pydantic>=2.10",        # current 2.13.x
-    "anthropic>=0.90",       # current 0.97.x — supports prompt caching, extended thinking
+    "langgraph>=1.0",         # 1.0 stable; current 1.1.x
+    "langchain-core>=1.0",    # pinned so the resolver picks a version compatible with langgraph 1.x
+    "pydantic>=2.10",         # current 2.13.x
+    "anthropic>=0.90",        # current 0.97.x — supports prompt caching, extended thinking
     "httpx>=0.28",
     "faiss-cpu>=1.10",
     "numpy>=2.0",
