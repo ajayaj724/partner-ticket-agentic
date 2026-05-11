@@ -14,7 +14,7 @@
 
   <nav class="topnav">
     <span class="crumb"><a href="index.html">Concepts</a> / <b>01</b></span>
-    <span><a href="../demo-guide.html">Demo</a> · <a href="../learn.html">Learn</a></span>
+    <span><a href="../../README.md">README</a> · <a href="../DESIGN.md">Design spec</a></span>
   </nav>
 
   <header class="hero">
@@ -147,10 +147,10 @@ result = provider.complete(messages, schema=schema, tier=SMALL)
         approximations on rails.</p>
     </div>
 
-    <h2>Why this matters for the panel</h2>
+    <h2>Why this matters for the architecture</h2>
 
-    <p>Three properties of LLMs shape every other architectural choice in
-      this project:</p>
+    <p>Three properties of LLMs shape every other architectural choice
+      in this project:</p>
     <ol>
       <li><strong>Non-determinism</strong> → we need schemas (concept 02)
         and idempotency (concept 04) and good fallbacks.</li>
@@ -162,8 +162,8 @@ result = provider.complete(messages, schema=schema, tier=SMALL)
         and tool allow-listing.</li>
     </ol>
 
-    <p>If the panel asks <em>"why is your system designed this way?"</em>
-      the honest answer always traces back to one of these three.</p>
+    <p>Every other design choice in this codebase traces back to one of
+      these three.</p>
 
     <div class="check">
       <p class="label">Quick check</p>

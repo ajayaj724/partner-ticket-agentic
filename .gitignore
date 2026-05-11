@@ -58,3 +58,6 @@ scratch/
 # ship in the public repo.
 Presentation/*_v[0-9].pptx
 !Presentation/Ajay_Antony_Capgemini_Panel_v4.pptx
+docs/demo-guide.html
+docs/DEMO-GUIDE.md
+docs/learn.html

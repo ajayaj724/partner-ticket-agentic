@@ -14,7 +14,7 @@
 
   <nav class="topnav">
     <span class="crumb"><a href="index.html">Concepts</a> / <b>02</b></span>
-    <span><a href="../demo-guide.html">Demo</a> · <a href="../learn.html">Learn</a></span>
+    <span><a href="../../README.md">README</a> · <a href="../DESIGN.md">Design spec</a></span>
   </nav>
 
   <header class="hero">
@@ -119,15 +119,6 @@
       <li>There's a <strong>human-in-the-loop gate</strong> (F5 never auto-sends)</li>
     </ol>
 
-    <div class="bridge">
-      <p class="label">For the panel</p>
-      <p>When the recruiter's rubric says "if you built agent workflows
-        describe agentic framework / multi-agent orchestration / tool
-        use", they're testing whether you understand what makes a
-        system <em>agentic</em> vs. just calling ChatGPT in a loop. The
-        five points above are the answer.</p>
-    </div>
-
     <h2>How an agent actually runs (the inside view)</h2>
 
     <p>Here's what happens inside our F1 Triage agent when a ticket arrives:</p>
@@ -203,7 +194,7 @@ return {"triage": result.model_dump()}</div>
 
     <div class="check">
       <p class="label">Quick check</p>
-      <p>The panel asks: "Couldn't you just call Claude Opus once with
+      <p>A reviewer asks: "Couldn't you just call Claude Opus once with
         the whole ticket and let it figure it out?" — what's your answer?</p>
       <button class="reveal">Reveal</button>
       <div class="answer">

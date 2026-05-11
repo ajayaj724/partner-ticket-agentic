@@ -14,7 +14,7 @@
 
   <nav class="topnav">
     <span class="crumb"><a href="index.html">Concepts</a> / <b>08</b></span>
-    <span><a href="../demo-guide.html">Demo</a> · <a href="../learn.html">Learn</a></span>
+    <span><a href="../../README.md">README</a> · <a href="../DESIGN.md">Design spec</a></span>
   </nav>
 
   <header class="hero">
@@ -24,7 +24,7 @@
       Now that you know the concepts and what the application does,
       here's a file-by-file tour. Designed so you can answer
       <em>"where would I find X in the code?"</em> for anything the
-      panel asks about.
+      reviewer might ask about.
     </p>
   </header>
 
@@ -39,7 +39,7 @@
 ├── docs/                           ← design spec + guides + this concept series
 ├── data/                           ← seed JSON (partners, runbooks, sample tickets)
 ├── config/                         ← approved_models.yaml, budgets.yaml
-├── Presentation/                   ← the PPT for the panel
+├── Presentation/                   ← the slide deck
 ├── pyproject.toml                  ← deps, build, lint, test config
 ├── uv.lock                          ← reproducible dep versions
 ├── .github/workflows/ci.yml        ← lint + test + eval on every push
@@ -123,7 +123,7 @@
     <h2>How to read the codebase (in order)</h2>
 
     <p>Don't read every file. Read these five in this order — that's
-      enough to defend any panel question:</p>
+      enough to defend any review question:</p>
 
     <h3>1. <code>graph.py</code> (~130 lines)</h3>
 
@@ -284,7 +284,7 @@ $ uv run pytest
 
     <h2>How to extend it</h2>
 
-    <p>If a panellist asks <em>"how would you add a ninth agent?"</em>
+    <p>If a reviewer asks <em>"how would you add a ninth agent?"</em>
       the answer is a concrete walkthrough:</p>
 
     <ol>
@@ -314,14 +314,14 @@ $ uv run pytest
       is the template.</p>
 
     <div class="bridge">
-      <p class="label">For the panel</p>
-      <p>If they ask "how would your team add a new feature without
-        breaking the existing ones?", you can show them: the
-        <em>module-per-agent</em> structure, the <em>schema-first
-        I/O</em> contract, the <em>per-agent allow-list</em>, and the
-        <em>eval suite gates in CI</em> mean a new agent is additive
-        — it can't accidentally break F1-F8. That's what production-
-        shape means at the team level, not just the code level.</p>
+      <p class="label">Why this composes safely</p>
+      <p>The <em>module-per-agent</em> structure, the
+        <em>schema-first I/O</em> contract, the
+        <em>per-agent allow-list</em>, and the
+        <em>eval suite gates in CI</em> together mean a new agent is
+        additive — it can't accidentally break F1-F8. That's what
+        production-shape means at the team level, not just the code
+        level.</p>
     </div>
 
     <h2>The two artefacts inside the repo that aren't code</h2>
@@ -339,12 +339,11 @@ $ uv run pytest
     </ol>
 
     <p>Plus the doc set you're reading: <code>docs/concepts/</code>
-      (this series), <code>docs/learn.html</code> (study guide), and
-      <code>docs/demo-guide.html</code> (talk-track).</p>
+      (this series).</p>
 
     <div class="misconception">
       <p class="label">Misconception to avoid</p>
-      <p>"The code is the documentation." For a 2-week panel project
+      <p>"The code is the documentation." For a 2-week hand-built reference project
         maybe; for anything bigger, the documents matter as much as
         the code. The design doc explains the <em>why</em> the code
         can't. The eval golden sets capture intent the tests can't.
@@ -355,7 +354,7 @@ $ uv run pytest
 
     <div class="check">
       <p class="label">Quick check</p>
-      <p>The panel asks: "Show me where in the code I'd find your
+      <p>A reviewer asks: "Show me where in the code I'd find your
         prompt-injection defence." What do you point at, and what
         does it do?</p>
       <button class="reveal">Reveal</button>
@@ -389,17 +388,15 @@ $ uv run pytest
     <p>Next stops:</p>
 
     <ol>
-      <li><a href="../learn.html">docs/learn.html</a> — applies these
-        concepts to the rubric the recruiter named, with verbal-move
-        cheat sheets for fluency under pressure.</li>
-      <li><a href="../demo-guide.html">docs/demo-guide.html</a> — the
-        live talk-track. Flip "Demo Mode" in the corner; walk it once
-        out loud with a timer.</li>
+      <li>Open the design spec:
+        <a href="../DESIGN.md"><code>docs/DESIGN.md</code></a>
+        — the architectural reasoning behind every choice.</li>
+      <li>Open the AI Act assessment:
+        <a href="../AI_ACT_ASSESSMENT.md"><code>docs/AI_ACT_ASSESSMENT.md</code></a>
+        — the limited-risk classification document.</li>
       <li><a href="https://github.com/ajayaj724/partner-ticket-agentic/blob/main/src/partner_ticket_agentic/graph.py" target="_blank"><code>src/partner_ticket_agentic/graph.py</code></a>
         — read it end to end. 130 lines. It IS the architecture.</li>
     </ol>
-
-    <p>You're ready.</p>
 
   </article>
 

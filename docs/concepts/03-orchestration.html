@@ -14,7 +14,7 @@
 
   <nav class="topnav">
     <span class="crumb"><a href="index.html">Concepts</a> / <b>03</b></span>
-    <span><a href="../demo-guide.html">Demo</a> · <a href="../learn.html">Learn</a></span>
+    <span><a href="../../README.md">README</a> · <a href="../DESIGN.md">Design spec</a></span>
   </nav>
 
   <header class="hero">
@@ -193,23 +193,21 @@ result = runnable.invoke(initial_state)</div>
       "replay-from-trace" capability the design doc names.</p>
 
     <div class="bridge">
-      <p class="label">For the panel</p>
-      <p>When the panel asks "why LangGraph over Semantic Kernel or
-        OpenAI Assistants?", the answer is:</p>
-      <p>(1) Graph-based orchestration with <em>deterministic
-        tool-call control</em> — we decide routing, not the LLM.
-        (2) Built-in state checkpointing for crash recovery in production.
-        (3) Mature observability hooks. (4) Python ecosystem is strongest
-        for retrieval and eval. <strong>Semantic Kernel</strong> is
-        native to the Microsoft estate but less idiomatic outside .NET.
+      <p class="label">Why LangGraph over the alternatives</p>
+      <p>Graph-based orchestration with <em>deterministic tool-call
+        control</em> — the application decides routing, not the LLM.
+        Built-in state checkpointing for crash recovery. Mature
+        observability hooks. The Python ecosystem is strongest for
+        retrieval and eval. <strong>Semantic Kernel</strong> is native
+        to the Microsoft estate but less idiomatic outside .NET.
         <strong>OpenAI Assistants / Bedrock Agents</strong> are managed
-        runtimes — tighter vendor coupling, weaker control over tool-call
-        policy.</p>
+        runtimes — tighter vendor coupling, weaker control over
+        tool-call policy.</p>
     </div>
 
     <h2>What about the alternatives?</h2>
 
-    <p>Two questions the panel might ask:</p>
+    <p>Two questions the reviewer might ask:</p>
 
     <h3>"Why not write the orchestration yourself in plain Python?"</h3>
 

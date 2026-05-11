@@ -14,7 +14,7 @@
 
   <nav class="topnav">
     <span class="crumb"><a href="index.html">Concepts</a> / <b>04</b></span>
-    <span><a href="../demo-guide.html">Demo</a> · <a href="../learn.html">Learn</a></span>
+    <span><a href="../../README.md">README</a> · <a href="../DESIGN.md">Design spec</a></span>
   </nav>
 
   <header class="hero">
@@ -184,13 +184,15 @@ Booting MCP server on stdio (Ctrl-C to stop)</div>
       across agents"</em>.</p>
 
     <div class="bridge">
-      <p class="label">Why panels care about MCP</p>
-      <p>MCP is the 2026 industry signal. If your agentic system can't
-        speak MCP, it's a closed silo — only your own agents can use
-        your tools. If it can speak MCP, it's interoperable with the
-        broader ecosystem. Saying "we surface the tool registry via
-        MCP" tells the panel you follow industry standards, not just
-        bespoke conventions.</p>
+      <p class="label">Why MCP matters in 2026</p>
+      <p>MCP is the industry-standard tool-protocol signal. Without it,
+        an agentic system is a closed silo — only its own agents can
+        use its tools. With it, the system is interoperable with the
+        broader ecosystem: any MCP client (Claude Desktop, third-party
+        agents, CI tooling) can discover and invoke the same tools.
+        Surfacing a tool registry over MCP marks the system as a good
+        citizen of the agentic-AI ecosystem rather than a bespoke
+        silo.</p>
     </div>
 
     <h2>The four tool-design properties to remember</h2>
@@ -221,7 +223,7 @@ Booting MCP server on stdio (Ctrl-C to stop)</div>
 
     <div class="check">
       <p class="label">Quick check</p>
-      <p>The panel asks: "What happens if F2 Enricher's
+      <p>A reviewer asks: "What happens if F2 Enricher's
         <code>crm_lookup_partner</code> tool calls a downstream that's
         timing out 50% of the time?"</p>
       <button class="reveal">Reveal</button>
