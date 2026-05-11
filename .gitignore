@@ -52,3 +52,9 @@ scratch/
 
 # Playwright MCP session artifacts (used during local UI verification)
 .playwright-mcp/
+
+# Old PPT versions — only the latest version is tracked. Earlier
+# versions can stay locally for diff comparison but don't need to
+# ship in the public repo.
+Presentation/*_v[0-9].pptx
+!Presentation/Ajay_Antony_Capgemini_Panel_v4.pptx

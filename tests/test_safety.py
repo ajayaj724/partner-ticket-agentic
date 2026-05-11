@@ -56,7 +56,7 @@ class TestPIIDetection:
     def test_belgian_iban_detected(self) -> None:
         from partner_ticket_agentic.safety import detect_pii
 
-        findings = detect_pii("settled to BE68 5390 0754 7034 last week")
+        findings = detect_pii("settled to BE00 0000 0000 0000 last week")
         assert any(f.kind == "iban_be" for f in findings)
 
     def test_ipv4_detected(self) -> None:
