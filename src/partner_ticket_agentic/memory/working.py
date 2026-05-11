@@ -49,6 +49,12 @@ class TicketState(BaseModel):
     # ---- fallback markers --------------------------------------------------
     fell_back: list[str] = Field(default_factory=list)
 
+    # ---- cost telemetry (slide 17 of the deck) -----------------------------
+    # Populated by the graph after the pipeline runs. Same shape as
+    # ``cost.CostLedger.summary()`` — kept dict-typed so this module stays
+    # independent of the cost module's class.
+    cost: dict[str, Any] | None = None
+
     @classmethod
     def from_ticket(cls, ticket: dict[str, Any]) -> TicketState:
         """Construct an initial state from a ticket dict (e.g., seed data)."""

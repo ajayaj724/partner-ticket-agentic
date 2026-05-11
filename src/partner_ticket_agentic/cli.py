@@ -138,6 +138,16 @@ def _print_pipeline_summary(state: Any) -> None:
     print((draft.get("body") or "").rstrip())
     print()
 
+    cost = getattr(state, "cost", None) or {}
+    if cost.get("calls"):
+        print("Cost / token telemetry:")
+        line("calls", cost.get("calls"))
+        line("tokens_in / out", f"{cost.get('tokens_in')} / {cost.get('tokens_out')}")
+        line("cached_input_tokens", cost.get("cached_input_tokens"))
+        line("cache_hit_rate", cost.get("cache_hit_rate"))
+        line("cost_usd", f"${cost.get('cost_usd', 0):.6f}")
+        print()
+
 
 def _cmd_ticket(args: argparse.Namespace) -> int:
     ticket = _ticket_by_id(args.ticket_id)

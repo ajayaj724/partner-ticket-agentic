@@ -31,7 +31,8 @@ from typing import TYPE_CHECKING, Any, TypeVar
 
 from pydantic import BaseModel, ValidationError
 
-from partner_ticket_agentic.obs import get_logger
+from partner_ticket_agentic.cost import current_ledger, estimate_cost
+from partner_ticket_agentic.obs import current_log_context, get_logger
 from partner_ticket_agentic.providers.base import (
     ApprovedModelRegistry,
     LLMProviderError,
@@ -89,6 +90,11 @@ class AnthropicProvider:
         model_id = self._registry.resolve(self.name, tier)
         tool_name = f"emit_{schema.__name__.lower()}"
         json_schema = schema.model_json_schema()
+        # Prompt caching: marking the tool definition as cache_control=ephemeral
+        # tells Anthropic to cache the (verbose) tool schema and the system
+        # prompt for subsequent calls in the same session. Cache reads bill at
+        # ~10% of the input rate; cache writes (first fill) at 125% — net win
+        # on any flow that issues >1 call per process. DESIGN-deck §17.
         tool_def: dict[str, Any] = {
             "name": tool_name,
             "description": (
@@ -96,15 +102,23 @@ class AnthropicProvider:
                 "Reply ONLY by calling this tool — never in free text."
             ),
             "input_schema": _strip_pydantic_metadata(json_schema),
+            "cache_control": {"type": "ephemeral"},
         }
         anthropic_messages = [{"role": m.role, "content": m.content} for m in messages]
+        system_param: Any
+        if system:
+            system_param = [
+                {"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}
+            ]
+        else:
+            system_param = ""
 
         started = time.perf_counter()
         try:
             response = self._client.messages.create(
                 model=model_id,
                 max_tokens=self._max_tokens,
-                system=system or "",
+                system=system_param,
                 tools=[tool_def],
                 tool_choice={"type": "tool", "name": tool_name},
                 messages=anthropic_messages,
@@ -122,8 +136,24 @@ class AnthropicProvider:
             ) from exc
 
         usage = getattr(response, "usage", None)
-        tokens_in = getattr(usage, "input_tokens", None) if usage else None
-        tokens_out = getattr(usage, "output_tokens", None) if usage else None
+        tokens_in = int(getattr(usage, "input_tokens", 0) or 0) if usage else 0
+        tokens_out = int(getattr(usage, "output_tokens", 0) or 0) if usage else 0
+        cache_read = int(getattr(usage, "cache_read_input_tokens", 0) or 0) if usage else 0
+        cache_write = int(getattr(usage, "cache_creation_input_tokens", 0) or 0) if usage else 0
+        breakdown = estimate_cost(
+            self.name,
+            model_id,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+            cached_input_tokens=cache_read,
+            cache_write_tokens=cache_write,
+        )
+
+        agent = current_log_context().get("agent", "unknown")
+        ledger = current_ledger()
+        if ledger is not None:
+            ledger.record(agent=str(agent), provider=self.name, model=model_id, breakdown=breakdown)
+
         _log.info(
             "llm_call",
             extra={
@@ -132,10 +162,9 @@ class AnthropicProvider:
                 "tier": tier.value,
                 "schema": schema.__name__,
                 "latency_ms": latency_ms,
-                "tokens_in": tokens_in,
-                "tokens_out": tokens_out,
                 "trace_id": trace_id,
                 "outcome": "success",
+                **breakdown.to_log_fields(),
             },
         )
         return instance

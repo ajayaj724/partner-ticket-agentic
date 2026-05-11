@@ -21,7 +21,12 @@ from typing import Any, TypeVar
 import httpx
 from pydantic import BaseModel, ValidationError
 
-from partner_ticket_agentic.obs import get_logger
+from partner_ticket_agentic.cost import (
+    current_ledger,
+    estimate_cost,
+    estimate_tokens,
+)
+from partner_ticket_agentic.obs import current_log_context, get_logger
 from partner_ticket_agentic.providers.base import (
     ApprovedModelRegistry,
     LLMProviderError,
@@ -106,6 +111,18 @@ class OllamaProvider:
                     f"raw payload was: {raw[:500]!r}"
                 )
 
+        # Ollama doesn't return usage; estimate deterministically.
+        input_text = (system or "") + "\n".join(m.content for m in messages)
+        output_text = instance.model_dump_json()
+        tokens_in = estimate_tokens(input_text)
+        tokens_out = estimate_tokens(output_text)
+        breakdown = estimate_cost(self.name, model_id, tokens_in=tokens_in, tokens_out=tokens_out)
+
+        agent = current_log_context().get("agent", "unknown")
+        ledger = current_ledger()
+        if ledger is not None:
+            ledger.record(agent=str(agent), provider=self.name, model=model_id, breakdown=breakdown)
+
         _log.info(
             "llm_call",
             extra={
@@ -116,6 +133,7 @@ class OllamaProvider:
                 "latency_ms": latency_ms,
                 "trace_id": trace_id,
                 "outcome": "success",
+                **breakdown.to_log_fields(),
             },
         )
         return instance

@@ -168,6 +168,8 @@
     await delay(180);
     setNodeState("end", "complete");
 
+    if (state.cost) renderCostCard(state.cost, data.provider_resolved);
+
     renderTraceTab();
   }
 
@@ -455,6 +457,50 @@
       span.append(badge(f, "danger"));
     });
     return span;
+  }
+
+  function renderCostCard(cost, provider) {
+    const hitRate = cost.cache_hit_rate || 0;
+    const costStr = "$" + (cost.cost_usd || 0).toFixed(6);
+    const byAgent = cost.by_agent || {};
+
+    const byAgentList = el("div", { style: { marginTop: "8px" } });
+    const head = el("div.wd-row.head", null,
+      el("span", null, "agent"),
+      el("span", null, "calls"),
+      el("span", null, "tokens in/out"),
+      el("span", null, "cost (USD)"),
+    );
+    byAgentList.append(head);
+    for (const [agent, agg] of Object.entries(byAgent)) {
+      byAgentList.append(
+        el("div.wd-row", null,
+          el("span", null, code(agent)),
+          el("span", null, String(agg.calls)),
+          el("span", null, `${agg.tokens_in} / ${agg.tokens_out}`),
+          el("span.mono", null, "$" + (agg.cost_usd || 0).toFixed(6)),
+        ),
+      );
+    }
+
+    const body = el("div", null,
+      kv([
+        ["provider", code(provider)],
+        ["calls", String(cost.calls)],
+        ["tokens_in / out", `${cost.tokens_in} / ${cost.tokens_out}`],
+        ["cached_input_tokens", String(cost.cached_input_tokens)],
+        ["cache_hit_rate", `${Math.round(hitRate * 100)}%`],
+        ["total_cost_usd", el("span.mono", null, costStr)],
+      ]),
+      byAgentList,
+    );
+
+    card({
+      id: "cost.py · CostLedger.summary()",
+      title: "Cost & token telemetry",
+      badgeNode: badge(provider === "mock" ? "free (mock)" : "live", provider === "mock" ? "muted" : "ok"),
+      body,
+    });
   }
 
   function renderError(msg) {

@@ -105,17 +105,34 @@ def run_pipeline(
 ) -> TicketState:
     """Run a single ticket through the full pipeline and return the final state."""
 
+    from partner_ticket_agentic.cost import CostLedger, bind_ledger
+
     trace_id = trace_id or new_trace_id()
     initial = TicketState.from_ticket(ticket).model_copy(
         update={"trace_id": trace_id, "provider": (provider.name if provider else "mock")}
     )
     runnable = build_graph(provider=provider)
-    with bind_log_context(trace_id=trace_id, ticket_id=ticket["ticket_id"]):
+    ledger = CostLedger()
+    with bind_log_context(trace_id=trace_id, ticket_id=ticket["ticket_id"]), bind_ledger(ledger):
         _log.info("pipeline_start")
         result = runnable.invoke(initial)
-        _log.info("pipeline_done")
+        _log.info(
+            "pipeline_done",
+            extra={
+                "cost_usd": round(ledger.summary()["cost_usd"], 6),
+                "tokens_in": ledger.summary()["tokens_in"],
+                "tokens_out": ledger.summary()["tokens_out"],
+                "cache_hit_rate": ledger.summary()["cache_hit_rate"],
+            },
+        )
+
     if isinstance(result, TicketState):
-        return result
-    if isinstance(result, dict):
-        return TicketState.model_validate(result)
-    raise TypeError(f"unexpected pipeline result type: {type(result).__name__}")
+        state = result
+    elif isinstance(result, dict):
+        state = TicketState.model_validate(result)
+    else:
+        raise TypeError(f"unexpected pipeline result type: {type(result).__name__}")
+
+    # Attach the per-ticket cost roll-up so the trace, CLI, and web UI can
+    # surface it without recomputing.
+    return state.model_copy(update={"cost": ledger.summary()})

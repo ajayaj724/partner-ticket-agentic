@@ -115,6 +115,17 @@ def get_logger(name: str) -> _logging.Logger:
     return _logging.getLogger(f"partner_ticket_agentic.{name}")
 
 
+def current_log_context() -> Mapping[str, Any]:
+    """Return the bound log context — used by providers to read the calling agent.
+
+    Each agent wraps its run in :func:`bind_log_context(agent="...", ...)`,
+    so a provider can read ``current_log_context().get("agent")`` to know
+    which agent issued the LLM call without changing the provider signature.
+    """
+
+    return _LOG_CONTEXT.get()
+
+
 def new_trace_id() -> str:
     """Mint a fresh trace ID. UUID4 hex truncated to 16 chars for log brevity."""
 
