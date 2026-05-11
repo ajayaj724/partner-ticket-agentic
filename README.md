@@ -12,9 +12,12 @@ through a real LangGraph state machine, every agent emitting a
 Pydantic-validated structured output, every tool gated behind a per-agent
 allow-list enforced in code.
 
-> **Status:** all eight features (F1–F8) implemented end-to-end. 121 tests
+> **Status:** all eight features (F1–F8) implemented end-to-end. 165 tests
 > passing locally. Eval suite green: F1 100% category accuracy, F3 100%
 > queue accuracy, F4 93% top-1, F7 1.0 P/R, F8 100% band accuracy.
+> Adds prompt caching + per-call cost telemetry, hybrid BM25 + dense
+> retrieval, PII detection at ingest, and an MCP server exposing the
+> tool registry to any MCP-aware client.
 
 ---
 
@@ -114,6 +117,9 @@ uv run python -m partner_ticket_agentic.evals
 
 # Web UI — depicts the running topology + the HITL gate at http://127.0.0.1:8000
 uv run python -m partner_ticket_agentic --web
+
+# Expose the tool registry as an MCP server (stdio transport)
+uv run python -m partner_ticket_agentic --mcp
 ```
 
 The default LLM provider is the **deterministic mock**: no network, no
@@ -262,10 +268,36 @@ Three tiers, never conflated (DESIGN.md §4.2):
 * **Working memory** — the LangGraph `TicketState`, scoped to one ticket flow.
 * **Episodic memory** — SQLite at `~/.ptag/episodic.db`, keyed by `partner_id`.
   Stores compact summaries of past ticket flows.
-* **Long-term memory** — FAISS over deterministic FNV-1a feature-hashed
-  embeddings of the runbook corpus, plus structured facts in SQLite. The
-  hashing embedder keeps the demo offline and reproducible; production
-  swaps in a real embedder by replacing one function.
+* **Long-term memory** — **hybrid retrieval** over the runbook corpus
+  (`memory/longterm.py`): FAISS dense (deterministic FNV-1a feature-hashed
+  embeddings) + hand-rolled Okapi BM25 (k1=1.5, b=0.75), blended with
+  min-max normalisation and a configurable `alpha`. Production swaps the
+  hashing embedder for a real one by replacing `embed_text()`.
+
+---
+
+## Cost optimization
+
+Slide 17 of the panel deck commits to model routing, prompt caching,
+schema-first outputs, and per-call cost telemetry. The code:
+
+* **Tiered model routing** — agents pick `Tier.SMALL` / `MEDIUM` / `LARGE`
+  based on the task (DESIGN.md §4.1). Concrete model IDs per
+  `config/approved_models.yaml`.
+* **Anthropic prompt caching** — the system prompt and the (verbose) tool
+  schema are marked `cache_control={"type": "ephemeral"}`, so the second
+  call onwards reads cached input at ~10% of the input rate.
+* **Function-calling for structured output** — `tool_choice={"type":
+  "tool", "name": ...}` on Anthropic; `format: json` on Ollama. No
+  free-text JSON parsing.
+* **Per-call cost telemetry** — `cost.py` keeps a `PRICING` table keyed
+  by `(provider, model_id)`. Every `llm_call` log record carries
+  `tokens_in`, `tokens_out`, `cached_input_tokens`, `cache_write_tokens`,
+  `cost_usd`, `cache_hit`. The graph rolls per-ticket totals via a
+  `CostLedger` and attaches the summary to the final state.
+* **Cost surface** — CLI shows a "Cost / token telemetry" block at the
+  end of `--ticket-id` output; web UI shows a "Cost & token telemetry"
+  card under F5 with a per-agent breakdown.
 
 ---
 
@@ -289,9 +321,13 @@ Optional live LLM swap: `--llm-provider anthropic --ticket-id sample-1`.
 * **EU AI Act:** *limited risk* — informational and decision-support, no
   irreversible automated decisions affecting individuals. Documented in
   [`docs/AI_ACT_ASSESSMENT.md`](docs/AI_ACT_ASSESSMENT.md).
-* **GDPR:** PII redaction at ingest via the compliance filter; an
-  episodic right-to-erasure flow purges per-partner records and
-  embeddings.
+* **GDPR:** PII detection at the ingest boundary (`safety.detect_pii`)
+  covers email, Belgian/international phone, Belgian IBAN, and IPv4
+  addresses; findings land in `TicketState.pii_findings` and in the
+  `pipeline_start` log record. Agents still receive the original
+  description (they need it to operate); `redact_pii_for_logging` masks
+  the audit surface. An episodic right-to-erasure flow purges
+  per-partner records and embeddings.
 * **Data residency:** All providers configured for EU regions when
   deployed. Anthropic supports region pinning; Ollama is local.
 * **Audit by default:** every agent and tool call emits a structured
@@ -309,16 +345,20 @@ src/partner_ticket_agentic/
   agents/           F1–F8 agent modules + LangGraph node wrappers
   tools/            Per-tool implementations + ToolRegistry + ToolDispatcher
   providers/        LLMProvider Protocol + Mock + Anthropic + Ollama
-  memory/           working (LangGraph state) + episodic (SQLite) + longterm (FAISS)
+                    (Anthropic uses cache_control=ephemeral for prompt caching)
+  memory/           working (LangGraph state) + episodic (SQLite) + longterm (BM25 + FAISS hybrid)
   evals/            Eval runner: python -m partner_ticket_agentic.evals
-  obs.py            JSON-line logger + trace_collector + bind_log_context
-  safety.py         InjectionFilter + ToolAllowList + typed ToolNotAllowedError
+  web/              FastAPI app + single-page UI ([web] extras)
+  obs.py            JSON-line logger + trace_collector + bind_log_context + current_log_context
+  safety.py         InjectionFilter + PIIDetector + ToolAllowList + ToolNotAllowedError
+  cost.py           PRICING table + estimate_cost + CostLedger + bind_ledger
+  mcp_server.py     Tool-registry-as-MCP-server ([mcp] extras)
   graph.py          LangGraph StateGraph wiring (F1+F7 parallel, F6 conditional)
-  cli.py            argparse: --list, --ticket-id, --watchdog, --inject, --llm-provider, --export-trace
+  cli.py            argparse: --list, --ticket-id, --watchdog, --inject, --web, --mcp, --llm-provider, --export-trace
 config/approved_models.yaml
 data/               Seed JSON: partners, runbooks, sample tickets
 evals/              Five JSONL golden sets — F1, F3, F4, F7, F8
-tests/              121 pytest tests; 2 skip cleanly when Anthropic/Ollama not available
+tests/              165 pytest tests; 2 skip cleanly when Anthropic/Ollama not available
 docs/DESIGN.md      Authoritative design spec
 docs/AI_ACT_ASSESSMENT.md   Governance assessment
 ```
