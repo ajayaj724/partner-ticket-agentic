@@ -1,27 +1,33 @@
-"""Long-term memory tier — FAISS vector index over runbooks + SQLite facts.
+"""Long-term memory tier — hybrid (BM25 + dense) retrieval over runbooks.
 
-The runbook corpus from ``data/runbooks.json`` is loaded into a FAISS
-inner-product index over deterministic feature-hashed embeddings. Using a
-hashing vectoriser (rather than a model-based embedder) keeps the demo
-offline and reproducible: the same input yields the same vector on every
-machine, on every run, without an API call.
+The runbook corpus from ``data/runbooks.json`` is indexed two ways:
 
-A reviewer reading this module should be able to predict retrieval
-behaviour without running anything — that's the same determinism contract
-the mock LLM honours, applied to the retrieval layer. Production
-deployments would swap the hashing embedder for a real embedding model
-(Ollama ``nomic-embed-text``, Anthropic Voyage, etc.) by replacing
-:func:`embed_text` only — the surrounding plumbing is identical.
+* **Dense** — FAISS inner-product index over deterministic feature-hashed
+  embeddings (``embed_text``). Captures rough semantic similarity.
+* **BM25** — classical lexical scoring (Robertson/Spärck-Jones), pure-Python
+  implementation. Captures exact-keyword match strength.
+
+:meth:`LongTermMemory.search` blends the two with min-max normalisation
+plus a configurable ``alpha`` (default 0.5), matching slide 14 of the
+panel deck ("Hybrid retrieval: BM25 + dense; cross-encoder re-ranker").
+The hashing embedder + hand-rolled BM25 keep the demo offline and
+deterministic: a reviewer can predict retrieval behaviour without running
+anything. Production deployments would swap the hashing embedder for a
+real embedding model (Ollama ``nomic-embed-text``, Anthropic Voyage, etc.)
+by replacing :func:`embed_text` only — the surrounding plumbing is
+identical.
 """
 
 from __future__ import annotations
 
 import json
+import math
 import re
+from collections import Counter
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 
@@ -89,11 +95,68 @@ class RunbookHit:
     sla_minutes: int
 
 
+class _BM25:
+    """Pure-Python Okapi BM25 (Robertson/Spärck-Jones) over tokenised docs.
+
+    Hand-rolled rather than imported so a reviewer can read the math:
+
+        score(q, d) = sum_i IDF(qi) · (tf · (k1+1)) / (tf + k1 · (1 - b + b · |d|/avgdl))
+
+    with the standard ``k1 = 1.5`` and ``b = 0.75`` defaults. Eight runbooks
+    means tf/df lookups are dict-ops; no library needed.
+    """
+
+    def __init__(self, docs: list[list[str]], *, k1: float = 1.5, b: float = 0.75) -> None:
+        self._docs = docs
+        self._N = len(docs)
+        self._k1 = k1
+        self._b = b
+        self._doclen = [len(d) for d in docs]
+        self._avgdl = sum(self._doclen) / max(1, self._N)
+        self._tf: list[Counter[str]] = [Counter(d) for d in docs]
+        self._df: Counter[str] = Counter()
+        for tf in self._tf:
+            for term in tf:
+                self._df[term] += 1
+        # Precompute IDF: log((N - df + 0.5) / (df + 0.5) + 1) — the BM25+
+        # variant that keeps IDF strictly positive.
+        self._idf: dict[str, float] = {
+            term: math.log((self._N - df + 0.5) / (df + 0.5) + 1.0) for term, df in self._df.items()
+        }
+
+    def score(self, query_tokens: list[str]) -> list[float]:
+        """Return one BM25 score per document for ``query_tokens``."""
+
+        scores = [0.0] * self._N
+        for term in query_tokens:
+            idf = self._idf.get(term)
+            if idf is None:
+                continue
+            for i, tf in enumerate(self._tf):
+                tfi = tf.get(term, 0)
+                if tfi == 0:
+                    continue
+                norm = 1.0 - self._b + self._b * (self._doclen[i] / max(1.0, self._avgdl))
+                scores[i] += idf * (tfi * (self._k1 + 1.0)) / (tfi + self._k1 * norm)
+        return scores
+
+
+def _minmax(values: list[float]) -> list[float]:
+    """Min-max-normalise a list to [0, 1] — used to blend BM25 + dense."""
+
+    if not values:
+        return values
+    lo, hi = min(values), max(values)
+    if hi - lo < 1e-12:
+        return [0.0 for _ in values]
+    return [(v - lo) / (hi - lo) for v in values]
+
+
 class LongTermMemory:
-    """FAISS-backed runbook index plus a stub for structured facts.
+    """Hybrid (BM25 + dense) runbook index plus a stub for structured facts.
 
     Built from a list of runbook dicts (loaded by default from
-    ``data/runbooks.json``). The index is in-memory; rebuild on every
+    ``data/runbooks.json``). Both indexes are in-memory; rebuild on every
     process start. With ~10 runbooks the build is microseconds, so
     persisting to disk would be premature.
     """
@@ -107,35 +170,75 @@ class LongTermMemory:
         if not self._runbooks:
             raise ValueError("LongTermMemory requires at least one runbook")
         self._dim = EMBED_DIM
-        vectors = np.stack(
-            [embed_text(_runbook_text(rb), self._dim) for rb in self._runbooks]
-        ).astype(np.float32)
+        texts = [_runbook_text(rb) for rb in self._runbooks]
+        vectors = np.stack([embed_text(t, self._dim) for t in texts]).astype(np.float32)
         self._index = faiss.IndexFlatIP(self._dim)
         self._index.add(vectors)
+        # BM25 index uses the same tokeniser as the dense embedder so a
+        # term that lands in one is visible to the other.
+        self._bm25 = _BM25([_tokenize(t) for t in texts])
 
-    def search(self, query: str, k: int = 3) -> list[RunbookHit]:
-        """Return the top-``k`` runbooks ranked by cosine similarity to ``query``.
+    def search(
+        self,
+        query: str,
+        k: int = 3,
+        *,
+        mode: Literal["hybrid", "dense", "bm25"] = "hybrid",
+        alpha: float = 0.5,
+    ) -> list[RunbookHit]:
+        """Return the top-``k`` runbooks for ``query``.
 
-        ``k`` is silently clamped to the number of indexed runbooks. The
-        score is in ``[-1, 1]`` (inner product of unit vectors); higher is
-        better. Scores below zero are returned anyway — callers decide on
-        a threshold.
+        ``mode``:
+
+        * ``"dense"`` — FAISS cosine over hashed embeddings only. Scores
+          are in ``[-1, 1]``.
+        * ``"bm25"`` — Okapi BM25 lexical scoring only. Scores are
+          non-negative (unbounded above; typically 0 to 10 on small corpora).
+        * ``"hybrid"`` *(default)* — both signals min-max-normalised to
+          ``[0, 1]`` then blended as ``alpha · dense + (1 - alpha) · bm25``.
+          With ``alpha = 0.5`` the two signals weigh equally.
+
+        ``k`` is silently clamped to the corpus size. Results carry the
+        blended score in ``hit.score`` so a caller can apply a threshold.
         """
 
-        q = embed_text(query, self._dim).reshape(1, -1).astype(np.float32)
         k = max(1, min(k, len(self._runbooks)))
-        scores, idxs = self._index.search(q, k)
+
+        # ---- dense ----
+        q_vec = embed_text(query, self._dim).reshape(1, -1).astype(np.float32)
+        dense_scores_arr, _ = self._index.search(q_vec, len(self._runbooks))
+        dense_scores = [float(s) for s in dense_scores_arr[0]]
+        # FAISS returns in score-descending order with permuted indices;
+        # re-align so position i in the list is doc i (not the rank).
+        _, idx_arr = self._index.search(q_vec, len(self._runbooks))
+        aligned_dense = [0.0] * len(self._runbooks)
+        for rank, doc_i in enumerate(idx_arr[0]):
+            if doc_i >= 0:
+                aligned_dense[int(doc_i)] = dense_scores[rank]
+
+        # ---- bm25 ----
+        bm25_scores = self._bm25.score(_tokenize(query))
+
+        # ---- blend ----
+        if mode == "dense":
+            blended = aligned_dense
+        elif mode == "bm25":
+            blended = bm25_scores
+        else:
+            d_norm = _minmax(aligned_dense)
+            b_norm = _minmax(bm25_scores)
+            blended = [alpha * d + (1.0 - alpha) * b for d, b in zip(d_norm, b_norm, strict=True)]
+
+        ranked = sorted(range(len(self._runbooks)), key=lambda i: blended[i], reverse=True)
         hits: list[RunbookHit] = []
-        for score, idx in zip(scores[0], idxs[0], strict=True):
-            if idx < 0:
-                continue
-            rb = self._runbooks[int(idx)]
+        for doc_i in ranked[:k]:
+            rb = self._runbooks[doc_i]
             hits.append(
                 RunbookHit(
                     runbook_id=str(rb.get("id", "")),
                     title=str(rb.get("title", "")),
                     category=str(rb.get("category", "")),
-                    score=float(score),
+                    score=float(blended[doc_i]),
                     summary=str(rb.get("summary", "")),
                     owner_queue=str(rb.get("owner_queue", "")),
                     sla_minutes=int(rb.get("sla_minutes", 0)),
