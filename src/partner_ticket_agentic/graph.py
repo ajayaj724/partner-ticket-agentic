@@ -105,10 +105,43 @@ def run_pipeline(
 ) -> TicketState:
     """Run a single ticket through the full pipeline and return the final state."""
 
-    from partner_ticket_agentic.cost import CostLedger, bind_ledger
+    import json
+    from pathlib import Path
+
+    from partner_ticket_agentic.cost import (
+        BudgetState,
+        CostLedger,
+        bind_budget,
+        bind_ledger,
+        load_budgets,
+    )
     from partner_ticket_agentic.safety import detect_pii
 
     trace_id = trace_id or new_trace_id()
+
+    # Resolve the partner's tier (for tier-based budget defaults) by
+    # reading the seed file. Kept simple because the demo's persistence
+    # layer is JSON; production would hit the partner-CRM through a
+    # tool. Fail-soft: missing tier yields "unlimited" cap.
+    partner_tier: str | None = None
+    try:
+        partners_path = Path(__file__).resolve().parents[2] / "data" / "partners.json"
+        if partners_path.exists():
+            partners = json.loads(partners_path.read_text())
+            for p in partners:
+                if p.get("partner_id") == ticket["partner_id"]:
+                    partner_tier = p.get("tier")
+                    break
+    except Exception:
+        partner_tier = None
+
+    budgets = load_budgets()
+    cap = budgets.cap_for(ticket["partner_id"], partner_tier)
+    budget_state = BudgetState(
+        partner_id=ticket["partner_id"],
+        cap=cap,
+        alert_thresholds=budgets.alert_thresholds,
+    )
     # Detect PII in the partner-supplied description at the ingest
     # boundary (deck slide 18). Findings are attached to the state so
     # the trace and web UI can surface them; the description itself is
@@ -124,12 +157,19 @@ def run_pipeline(
     )
     runnable = build_graph(provider=provider)
     ledger = CostLedger()
-    with bind_log_context(trace_id=trace_id, ticket_id=ticket["ticket_id"]), bind_ledger(ledger):
+    with (
+        bind_log_context(trace_id=trace_id, ticket_id=ticket["ticket_id"]),
+        bind_ledger(ledger),
+        bind_budget(budget_state),
+    ):
         _log.info(
             "pipeline_start",
             extra={
                 "pii_findings_count": len(pii),
                 "pii_kinds": sorted({p.kind for p in pii}),
+                "partner_tier": partner_tier,
+                "budget_max_tokens": cap.max_tokens,
+                "budget_max_usd": cap.max_usd,
             },
         )
         result = runnable.invoke(initial)
@@ -151,5 +191,19 @@ def run_pipeline(
         raise TypeError(f"unexpected pipeline result type: {type(result).__name__}")
 
     # Attach the per-ticket cost roll-up so the trace, CLI, and web UI can
-    # surface it without recomputing.
-    return state.model_copy(update={"cost": ledger.summary()})
+    # surface it without recomputing. Budget summary too, so the UI can
+    # show a "X% of token cap used" indicator.
+    cost_summary = ledger.summary()
+    if cap.max_tokens > 0 or cap.max_usd > 0.0:
+        cost_summary["budget"] = {
+            "partner_tier": partner_tier,
+            "max_tokens": cap.max_tokens,
+            "max_usd": cap.max_usd,
+            "used_tokens": budget_state.used_tokens,
+            "used_usd": round(budget_state.used_usd, 6),
+            "tokens_fraction": (
+                budget_state.used_tokens / cap.max_tokens if cap.max_tokens > 0 else 0.0
+            ),
+            "usd_fraction": (budget_state.used_usd / cap.max_usd if cap.max_usd > 0 else 0.0),
+        }
+    return state.model_copy(update={"cost": cost_summary})

@@ -223,3 +223,175 @@ def current_ledger() -> CostLedger | None:
     """Return the ledger bound by the enclosing :func:`bind_ledger`, or ``None``."""
 
     return _LEDGER.get()
+
+
+# --- per-tenant token + USD budgets (slide 17 of the deck) -----------------
+
+
+class BudgetExceededError(RuntimeError):
+    """Raised by a provider when a call would push a partner over budget.
+
+    Carries the partner_id, the cap that was crossed, and the running
+    total so the trace shows exactly which threshold tripped. Caught
+    by the graph layer and surfaced as a fail-closed agent fallback.
+    """
+
+    def __init__(self, partner_id: str, kind: str, used: float, cap: float) -> None:
+        super().__init__(f"partner {partner_id!r} over budget on {kind}: used {used} / cap {cap}")
+        self.partner_id = partner_id
+        self.kind = kind  # "tokens" or "usd"
+        self.used = used
+        self.cap = cap
+
+
+@dataclass(frozen=True, slots=True)
+class BudgetCap:
+    """One partner's per-ticket token + USD ceiling."""
+
+    max_tokens: int
+    max_usd: float
+
+
+@dataclass
+class BudgetState:
+    """Running consumption + alert-threshold bookkeeping for one ticket flow."""
+
+    partner_id: str
+    cap: BudgetCap
+    used_tokens: int = 0
+    used_usd: float = 0.0
+    # Fractions already alerted so we don't spam — once we've crossed 70%
+    # for tokens, we don't emit the 70%-tokens alert again on later calls.
+    fired_token_alerts: set[float] = field(default_factory=set)
+    fired_usd_alerts: set[float] = field(default_factory=set)
+    alert_thresholds: tuple[float, ...] = (0.70, 0.90, 1.00)
+
+    def would_exceed(self, *, tokens: int, usd: float) -> str | None:
+        """Return ``"tokens"`` / ``"usd"`` if this call would breach the cap.
+
+        Returns ``None`` if the call fits. The graph layer maps the
+        return value into a :class:`BudgetExceededError`.
+        """
+
+        if self.cap.max_tokens > 0 and self.used_tokens + tokens > self.cap.max_tokens:
+            return "tokens"
+        if self.cap.max_usd > 0 and self.used_usd + usd > self.cap.max_usd:
+            return "usd"
+        return None
+
+    def record(self, *, tokens: int, usd: float) -> list[tuple[str, float]]:
+        """Add a call's consumption; return any newly-crossed thresholds.
+
+        Each entry in the returned list is ``(kind, fraction)`` where
+        ``kind`` is ``"tokens"`` or ``"usd"`` and ``fraction`` is the
+        threshold (0.70, 0.90, 1.00). The caller logs these — INFO at
+        0.70, WARNING at 0.90, ERROR at 1.00.
+        """
+
+        self.used_tokens += tokens
+        self.used_usd += usd
+        fired: list[tuple[str, float]] = []
+        for t in self.alert_thresholds:
+            if (
+                self.cap.max_tokens > 0
+                and self.used_tokens >= self.cap.max_tokens * t
+                and t not in self.fired_token_alerts
+            ):
+                self.fired_token_alerts.add(t)
+                fired.append(("tokens", t))
+            if (
+                self.cap.max_usd > 0
+                and self.used_usd >= self.cap.max_usd * t
+                and t not in self.fired_usd_alerts
+            ):
+                self.fired_usd_alerts.add(t)
+                fired.append(("usd", t))
+        return fired
+
+
+_BUDGET: ContextVar[BudgetState | None] = ContextVar("_BUDGET", default=None)
+
+
+@contextmanager
+def bind_budget(state: BudgetState) -> Iterator[BudgetState]:
+    """Bind a :class:`BudgetState` for the call site (graph wraps pipeline runs)."""
+
+    token = _BUDGET.set(state)
+    try:
+        yield state
+    finally:
+        _BUDGET.reset(token)
+
+
+def current_budget() -> BudgetState | None:
+    """Return the budget bound by the enclosing :func:`bind_budget`."""
+
+    return _BUDGET.get()
+
+
+@dataclass(frozen=True, slots=True)
+class BudgetRegistry:
+    """Loaded view of ``config/budgets.yaml`` — per-partner + tier defaults."""
+
+    partners: dict[str, BudgetCap]
+    defaults_by_tier: dict[str, BudgetCap]
+    alert_thresholds: tuple[float, ...]
+
+    def cap_for(self, partner_id: str, tier: str | None = None) -> BudgetCap:
+        """Resolve a budget cap: explicit partner override, else tier default.
+
+        If neither is configured, returns an "unlimited" cap (zeros) so
+        the check is a no-op. Production deployments would likely fail
+        closed instead of silently allowing unbounded spend.
+        """
+
+        if partner_id in self.partners:
+            return self.partners[partner_id]
+        if tier and tier in self.defaults_by_tier:
+            return self.defaults_by_tier[tier]
+        return BudgetCap(max_tokens=0, max_usd=0.0)
+
+
+def _default_budgets_path() -> Any:
+    from pathlib import Path
+
+    here = Path(__file__).resolve()
+    for parent in (here, *here.parents):
+        candidate = parent / "config" / "budgets.yaml"
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def load_budgets(path: Any = None) -> BudgetRegistry:
+    """Load ``config/budgets.yaml`` into a :class:`BudgetRegistry`.
+
+    Missing file → empty registry (every cap_for returns unlimited).
+    That keeps the demo defensible if the config is absent.
+    """
+
+    import yaml
+
+    yaml_path = path if path is not None else _default_budgets_path()
+    if yaml_path is None:
+        return BudgetRegistry(partners={}, defaults_by_tier={}, alert_thresholds=(0.70, 0.90, 1.00))
+    from pathlib import Path
+
+    with Path(yaml_path).open("r", encoding="utf-8") as fh:
+        raw: dict[str, Any] = yaml.safe_load(fh) or {}
+    partners = {
+        pid: BudgetCap(
+            max_tokens=int(cfg.get("max_tokens", 0)),
+            max_usd=float(cfg.get("max_usd", 0.0)),
+        )
+        for pid, cfg in (raw.get("partners") or {}).items()
+    }
+    defaults = {
+        tier: BudgetCap(
+            max_tokens=int(cfg.get("max_tokens", 0)),
+            max_usd=float(cfg.get("max_usd", 0.0)),
+        )
+        for tier, cfg in (raw.get("defaults") or {}).items()
+    }
+    thresholds = tuple(raw.get("alert_thresholds") or (0.70, 0.90, 1.00))
+    return BudgetRegistry(partners=partners, defaults_by_tier=defaults, alert_thresholds=thresholds)

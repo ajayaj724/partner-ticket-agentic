@@ -26,6 +26,8 @@ from typing import Any, ClassVar, TypeVar
 from pydantic import BaseModel, ValidationError
 
 from partner_ticket_agentic.cost import (
+    BudgetExceededError,
+    current_budget,
     current_ledger,
     estimate_cost,
     estimate_tokens,
@@ -100,10 +102,52 @@ class MockProvider:
         tokens_out = estimate_tokens(output_text)
         breakdown = estimate_cost(self.name, model_id, tokens_in=tokens_in, tokens_out=tokens_out)
 
+        # Per-tenant budget pre-check (deck slide 17). Mock's USD is zero
+        # but tokens still count toward the cap; the panel-demo path stays
+        # well under the seeded gold-tier caps, so this is a no-op on the
+        # happy path and a visible enforcement on contrived stress tests.
+        budget = current_budget()
+        if budget is not None:
+            kind = budget.would_exceed(tokens=tokens_in + tokens_out, usd=breakdown.usd)
+            if kind is not None:
+                raise BudgetExceededError(
+                    budget.partner_id,
+                    kind,
+                    used=budget.used_tokens if kind == "tokens" else budget.used_usd,
+                    cap=budget.cap.max_tokens if kind == "tokens" else budget.cap.max_usd,
+                )
+
         agent = current_log_context().get("agent", "unknown")
         ledger = current_ledger()
         if ledger is not None:
             ledger.record(agent=str(agent), provider=self.name, model=model_id, breakdown=breakdown)
+
+        # Record on the budget after the ledger so threshold-crossing
+        # alerts include the correct running totals. INFO at 70%,
+        # WARNING at 90%, ERROR at 100%.
+        if budget is not None:
+            for alert_kind, fraction in budget.record(
+                tokens=tokens_in + tokens_out, usd=breakdown.usd
+            ):
+                severity = (
+                    _log.error
+                    if fraction >= 1.0
+                    else _log.warning
+                    if fraction >= 0.9
+                    else _log.info
+                )
+                severity(
+                    "budget_threshold_crossed",
+                    extra={
+                        "partner_id": budget.partner_id,
+                        "kind": alert_kind,
+                        "fraction": fraction,
+                        "used_tokens": budget.used_tokens,
+                        "used_usd": round(budget.used_usd, 6),
+                        "cap_tokens": budget.cap.max_tokens,
+                        "cap_usd": budget.cap.max_usd,
+                    },
+                )
 
         _log.info(
             "llm_call",

@@ -1,0 +1,39 @@
+# Per-partner token + USD budgets, with 70 / 90 / 100% alert thresholds.
+#
+# Slide 17 of the panel deck commits to:
+#   "Per-tenant token budgets with 70/90/100% alerts"
+#
+# Caps are per-ticket (single pipeline run). A production deployment
+# would persist usage to the episodic store and aggregate per
+# partner per billing period; the per-ticket cap here is the minimum
+# viable demo of the same control surface.
+#
+# Tier-based defaults so a new partner inherits sensible numbers
+# without touching this file. Partner-specific overrides win.
+
+defaults:
+  gold:
+    max_tokens: 50000
+    max_usd: 0.50
+  silver:
+    max_tokens: 20000
+    max_usd: 0.20
+  bronze:
+    max_tokens: 10000
+    max_usd: 0.10
+
+partners:
+  # P-1001 BrusselsNet BV (gold) — explicit override demonstrating the
+  # per-partner mechanism. Caps match the gold default; production would
+  # ratchet these from observed usage.
+  P-1001:
+    max_tokens: 50000
+    max_usd: 0.50
+
+# Alert thresholds — fractions of the cap. Log severity escalates with
+# threshold: 70% → INFO, 90% → WARNING, 100% → ERROR (and the call is
+# refused).
+alert_thresholds:
+  - 0.70
+  - 0.90
+  - 1.00
