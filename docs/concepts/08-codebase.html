@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>08 · Reading the codebase</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,300..900,0..100,0..1;1,9..144,300..900,0..100,0..1&family=IBM+Plex+Sans:ital,wght@0,300..700;1,400&family=IBM+Plex+Mono:ital,wght@0,400;0,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+<div class="shell">
+
+  <nav class="topnav">
+    <span class="crumb"><a href="index.html">Concepts</a> / <b>08</b></span>
+    <span><a href="../demo-guide.html">Demo</a> · <a href="../learn.html">Learn</a></span>
+  </nav>
+
+  <header class="hero">
+    <p class="label">Concept 08 of 08 · last page</p>
+    <h1>Reading the <em>codebase</em></h1>
+    <p class="deck">
+      Now that you know the concepts and what the application does,
+      here's a file-by-file tour. Designed so you can answer
+      <em>"where would I find X in the code?"</em> for anything the
+      panel asks about.
+    </p>
+  </header>
+
+  <article>
+
+    <h2>Top-level layout</h2>
+
+    <div class="example"><span class="label">Repository root</span>partner-ticket-agentic/
+├── src/partner_ticket_agentic/    ← all the application code
+├── tests/                          ← 193 pytest tests
+├── evals/                          ← 5 JSONL golden sets
+├── docs/                           ← design spec + guides + this concept series
+├── data/                           ← seed JSON (partners, runbooks, sample tickets)
+├── config/                         ← approved_models.yaml, budgets.yaml
+├── Presentation/                   ← the PPT for the panel
+├── pyproject.toml                  ← deps, build, lint, test config
+├── uv.lock                          ← reproducible dep versions
+├── .github/workflows/ci.yml        ← lint + test + eval on every push
+├── README.md                       ← architect-grade entry-point
+└── LICENSE                          ← MIT (Ajay Antony, 2026)</div>
+
+    <p>Four things to notice:</p>
+
+    <ul>
+      <li><strong>src/ layout</strong> — the package is under <code>src/</code>
+        rather than at the root. Standard Python convention for libraries
+        that want to be installable cleanly.</li>
+      <li><strong>tests/, evals/, docs/ as peers</strong> — same level
+        as src. Says "tests and evals are first-class artefacts, not
+        afterthoughts."</li>
+      <li><strong>config/ for runtime knobs</strong> — separate from
+        code. Approved models and per-tenant budgets are config, not
+        hardcode.</li>
+      <li><strong>data/ holds the demo's "world"</strong> — partners,
+        runbooks, sample tickets. Production wires the real platforms;
+        the demo uses these seeded JSON files.</li>
+    </ul>
+
+    <h2>Inside <code>src/partner_ticket_agentic/</code></h2>
+
+    <div class="example"><span class="label">The application package</span>src/partner_ticket_agentic/
+├── __init__.py                ← package marker, __version__
+├── __main__.py                ← entry point for `python -m partner_ticket_agentic`
+├── cli.py                      ← argparse: --list, --ticket-id, --watchdog,
+│                                 --inject, --web, --mcp, --llm-provider, ...
+│
+├── graph.py                    ← LangGraph wiring — the 8-agent topology
+├── state.py / memory/working.py  ← TicketState (Pydantic, LangGraph state)
+│
+├── agents/                     ← F1-F8 — one module per agent
+│   ├── triage.py               ← F1
+│   ├── enricher.py             ← F2
+│   ├── router.py               ← F3
+│   ├── knowledge.py            ← F4
+│   ├── drafter.py              ← F5
+│   ├── scheduler.py            ← F6
+│   ├── linker.py               ← F7
+│   └── watchdog.py             ← F8
+│
+├── providers/                  ← LLM provider abstraction
+│   ├── base.py                 ← LLMProvider Protocol, Tier enum
+│   ├── mock.py                 ← Deterministic mock (default)
+│   ├── anthropic.py            ← Tool-use + prompt caching
+│   └── ollama.py               ← Local OSS via `localhost:11434`
+│
+├── tools/                      ← Per-tool implementations
+│   ├── registry.py             ← ToolRegistry + ToolDispatcher
+│   ├── policy.py               ← Retry + circuit breaker
+│   ├── crm.py                  ← crm_lookup_partner
+│   ├── inventory.py            ← inventory_lookup_circuit
+│   ├── directory.py            ← directory_resolve_assignee, queue lookups
+│   ├── runbook.py              ← runbook_search, cross_encode_rerank
+│   ├── calendar.py             ← engineer_calendar_available_slots, slot_score
+│   ├── oncall.py               ← notify_oncall, escalate_to_manager
+│   ├── open_tickets.py         ← tickets_open_with_state, ticket_search_recent
+│   ├── templates.py            ← template_lookup
+│   ├── compliance.py           ← compliance_filter (PII + forbidden phrases)
+│   └── ...
+│
+├── memory/                     ← Three memory tiers
+│   ├── working.py              ← TicketState — in-process state per ticket
+│   ├── episodic.py             ← SQLite, per-partner, persisted
+│   └── longterm.py             ← FAISS (dense) + BM25 (lexical) over runbooks
+│
+├── obs.py                      ← Structured JSON-line logger + OTel spans
+├── safety.py                   ← Injection filter + PII detector + ToolAllowList
+├── cost.py                      ← PRICING table + CostLedger + BudgetState
+├── mcp_server.py               ← Tool registry exposed via MCP
+│
+├── web/                        ← FastAPI single-page UI
+│   ├── app.py                  ← API endpoints
+│   └── static/                 ← index.html, app.css, app.js
+│
+└── evals/__main__.py           ← `python -m partner_ticket_agentic.evals`</div>
+
+    <h2>How to read the codebase (in order)</h2>
+
+    <p>Don't read every file. Read these five in this order — that's
+      enough to defend any panel question:</p>
+
+    <h3>1. <code>graph.py</code> (~130 lines)</h3>
+
+    <p>The whole topology in code form. <code>StateGraph(TicketState)</code>,
+      <code>add_node</code> for each agent, <code>add_edge</code> for
+      transitions, <code>add_conditional_edges</code> for F6's branch.
+      The <code>run_pipeline</code> function ties trace IDs, log
+      context, cost ledger, and budget state to one ticket flow.</p>
+
+    <p>If you read one file end-to-end, this is it. It IS the architecture.</p>
+
+    <h3>2. <code>agents/triage.py</code> (~300 lines)</h3>
+
+    <p>Smallest and cleanest agent. Read it to see the agent pattern in
+      code: schema definition (<code>TriageOutput</code>), mock-LLM rule
+      (<code>_triage_rule</code>), fallback (<code>_triage_fallback</code>),
+      main entry (<code>run_triage</code>), LangGraph node wrapper
+      (<code>triage_node</code>). Every other agent follows the same
+      shape — read this once, you've read them all.</p>
+
+    <h3>3. <code>providers/mock.py</code> (~150 lines)</h3>
+
+    <p>The deterministic LLM stand-in. Look at the rule registry
+      (<code>_rules</code>), the dispatch logic (<code>complete</code>),
+      and the cost/budget hooks. CLAUDE.md is explicit:
+      <em>"deterministic if/elif rules a reviewer can read and
+      predict — no random, no hashing, no time-based branching."</em>
+      This file enforces that contract.</p>
+
+    <h3>4. <code>safety.py</code> (~130 lines)</h3>
+
+    <p>The two safety primitives in one file: <code>ToolAllowList</code>
+      with the typed <code>ToolNotAllowedError</code>, then
+      <code>detect_prompt_injection</code> with the regex patterns, then
+      <code>detect_pii</code> + <code>redact_pii_for_logging</code>.
+      Compact and auditable.</p>
+
+    <h3>5. <code>tools/policy.py</code> (~150 lines)</h3>
+
+    <p>Retry + circuit breaker. <code>RetryPolicy</code> with
+      exponential backoff. <code>CircuitBreaker</code> as a three-state
+      FSM (CLOSED / OPEN / HALF_OPEN). <code>BreakerRegistry</code> with
+      a process-wide default. Read once and you understand the
+      "fail closed, recover gracefully" posture.</p>
+
+    <div class="bridge">
+      <p class="label">If you only have 15 minutes</p>
+      <p>Read <code>graph.py</code> (the architecture in code) and
+        <code>agents/triage.py</code> (one agent end-to-end). That's
+        the 80/20. The other three above are nice-to-have for depth
+        questions on safety, providers, or tools.</p>
+    </div>
+
+    <h2>The tech stack — pin-by-pin</h2>
+
+    <table style="width:100%; border-collapse: collapse; margin: 18px 0; font-size: 14px;">
+      <thead>
+        <tr style="border-bottom: 1px solid var(--ink);">
+          <th style="text-align:left; padding: 10px 8px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 500;">Layer</th>
+          <th style="text-align:left; padding: 10px 8px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 500;">Choice</th>
+          <th style="text-align:left; padding: 10px 8px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 500;">Why</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom: 1px solid var(--rule);">
+          <td style="padding: 10px 8px;">Language</td>
+          <td style="padding: 10px 8px;">Python 3.14</td>
+          <td style="padding: 10px 8px;">Current stable per python.org (May 2026); 3.13 + 3.14 matrix in CI</td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--rule);">
+          <td style="padding: 10px 8px;">Package manager</td>
+          <td style="padding: 10px 8px;">uv</td>
+          <td style="padding: 10px 8px;">Fast resolver + Python version pinning; <code>uv sync</code> is the install</td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--rule);">
+          <td style="padding: 10px 8px;">Orchestration</td>
+          <td style="padding: 10px 8px;">LangGraph 1.x</td>
+          <td style="padding: 10px 8px;">Concept 03 — deterministic tool-call control, checkpoint support, mature observability</td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--rule);">
+          <td style="padding: 10px 8px;">Schemas</td>
+          <td style="padding: 10px 8px;">Pydantic v2</td>
+          <td style="padding: 10px 8px;">Schema-first I/O; concept 02</td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--rule);">
+          <td style="padding: 10px 8px;">LLM provider (default)</td>
+          <td style="padding: 10px 8px;">Mock (in-process)</td>
+          <td style="padding: 10px 8px;">Deterministic; offline; no API key; reproducible evals</td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--rule);">
+          <td style="padding: 10px 8px;">LLM provider (opt-in)</td>
+          <td style="padding: 10px 8px;">Anthropic SDK 0.97+, Ollama</td>
+          <td style="padding: 10px 8px;">Anthropic: tool-use + prompt caching; Ollama: local OSS</td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--rule);">
+          <td style="padding: 10px 8px;">Vector store</td>
+          <td style="padding: 10px 8px;">FAISS (faiss-cpu)</td>
+          <td style="padding: 10px 8px;">Demo scale; production swap to OpenSearch k-NN named in DESIGN.md</td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--rule);">
+          <td style="padding: 10px 8px;">Episodic store</td>
+          <td style="padding: 10px 8px;">SQLite</td>
+          <td style="padding: 10px 8px;">stdlib bindings; one table; production would be Postgres</td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--rule);">
+          <td style="padding: 10px 8px;">Web UI</td>
+          <td style="padding: 10px 8px;">FastAPI + vanilla HTML/JS</td>
+          <td style="padding: 10px 8px;">No build step; single-page; opt-in via <code>[web]</code> extras</td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--rule);">
+          <td style="padding: 10px 8px;">MCP server</td>
+          <td style="padding: 10px 8px;">Anthropic's <code>mcp</code> SDK 1.27+</td>
+          <td style="padding: 10px 8px;">opt-in via <code>[mcp]</code> extras; concept 04</td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--rule);">
+          <td style="padding: 10px 8px;">Observability</td>
+          <td style="padding: 10px 8px;">JSON-line + OpenTelemetry</td>
+          <td style="padding: 10px 8px;">JSON default; OTel opt-in via <code>PTAG_OTEL=1</code></td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--rule);">
+          <td style="padding: 10px 8px;">Lint + format</td>
+          <td style="padding: 10px 8px;">ruff</td>
+          <td style="padding: 10px 8px;">Combined linter + formatter; CI gates on it</td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--rule);">
+          <td style="padding: 10px 8px;">Tests</td>
+          <td style="padding: 10px 8px;">pytest 9.x</td>
+          <td style="padding: 10px 8px;">193 passing; integration tests skip-with-reason when external service absent</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px 8px;">CI</td>
+          <td style="padding: 10px 8px;">GitHub Actions</td>
+          <td style="padding: 10px 8px;">Matrix 3.13 + 3.14; ruff check + format + pytest + evals on every push</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>How to run it</h2>
+
+    <p>Three commands from a fresh clone:</p>
+
+    <div class="example"><span class="label">From zero</span># Clone (it's public now)
+$ git clone https://github.com/ajayaj724/partner-ticket-agentic.git
+$ cd partner-ticket-agentic
+
+# Install (uv auto-downloads Python 3.14 per .python-version)
+$ uv sync --all-extras
+
+# Run the demo
+$ uv run python -m partner_ticket_agentic --web
+# → http://127.0.0.1:8000 — the web UI
+
+$ uv run python -m partner_ticket_agentic --ticket-id sample-1
+# → CLI pipeline run + cost telemetry summary
+
+$ uv run pytest
+# → 193 pass, 2 skip (Anthropic + Ollama integration if not configured)</div>
+
+    <h2>How to extend it</h2>
+
+    <p>If a panellist asks <em>"how would you add a ninth agent?"</em>
+      the answer is a concrete walkthrough:</p>
+
+    <ol>
+      <li>Create <code>src/partner_ticket_agentic/agents/foo.py</code>
+        with:
+        <ul>
+          <li>A Pydantic <code>FooOutput</code> schema</li>
+          <li>A mock-LLM rule registered against the schema</li>
+          <li>A <code>run_foo</code> function</li>
+          <li>A <code>foo_node</code> LangGraph wrapper</li>
+        </ul>
+      </li>
+      <li>Add it to <code>graph.py</code> with the right edges
+        (parallel? sequential? conditional?).</li>
+      <li>If it needs tools, register them in
+        <code>tools/</code> and add to the agent's
+        <code>ToolAllowList</code>.</li>
+      <li>Add a JSONL eval set under <code>evals/</code> and wire it
+        into the runner.</li>
+      <li>Write unit tests in <code>tests/test_foo.py</code> +
+        integration tests in <code>tests/test_graph.py</code>.</li>
+      <li>Update <code>docs/DESIGN.md</code> §3 with the new
+        feature's spec.</li>
+    </ol>
+
+    <p>Every existing agent follows this pattern. <code>agents/triage.py</code>
+      is the template.</p>
+
+    <div class="bridge">
+      <p class="label">For the panel</p>
+      <p>If they ask "how would your team add a new feature without
+        breaking the existing ones?", you can show them: the
+        <em>module-per-agent</em> structure, the <em>schema-first
+        I/O</em> contract, the <em>per-agent allow-list</em>, and the
+        <em>eval suite gates in CI</em> mean a new agent is additive
+        — it can't accidentally break F1-F8. That's what production-
+        shape means at the team level, not just the code level.</p>
+    </div>
+
+    <h2>The two artefacts inside the repo that aren't code</h2>
+
+    <ol>
+      <li><strong><code>docs/DESIGN.md</code></strong> — the
+        authoritative spec. ~270 lines. Read first if you want the
+        architectural reasoning rather than the implementation
+        details. Section numbers in the spec are referenced
+        throughout the code comments.</li>
+      <li><strong><code>docs/AI_ACT_ASSESSMENT.md</code></strong> —
+        the limited-risk classification document. Concept 07
+        explains why this matters; this is the doc that proves we've
+        thought about it.</li>
+    </ol>
+
+    <p>Plus the doc set you're reading: <code>docs/concepts/</code>
+      (this series), <code>docs/learn.html</code> (study guide), and
+      <code>docs/demo-guide.html</code> (talk-track).</p>
+
+    <div class="misconception">
+      <p class="label">Misconception to avoid</p>
+      <p>"The code is the documentation." For a 2-week panel project
+        maybe; for anything bigger, the documents matter as much as
+        the code. The design doc explains the <em>why</em> the code
+        can't. The eval golden sets capture intent the tests can't.
+        The AI Act assessment makes regulatory thinking visible to
+        a reviewer. Code, docs, evals, and assessment all ship as
+        one artefact.</p>
+    </div>
+
+    <div class="check">
+      <p class="label">Quick check</p>
+      <p>The panel asks: "Show me where in the code I'd find your
+        prompt-injection defence." What do you point at, and what
+        does it do?</p>
+      <button class="reveal">Reveal</button>
+      <div class="answer">
+        <code>src/partner_ticket_agentic/safety.py</code> — specifically
+        <code>detect_prompt_injection(text)</code> and
+        <code>assert_safe_input(text)</code>. The first function returns
+        a list of <code>InjectionFinding</code> objects (each carrying
+        the matched regex + the substring). The second wraps the first
+        and raises <code>SafetyError</code> if any pattern matches —
+        used at the CLI boundary in <code>cli.py</code> for the
+        <code>--inject</code> flag, and at the ingest boundary in
+        <code>graph.py</code> before the pipeline starts. Three layers
+        of defence: this regex filter at ingest, the system-prompt
+        anchoring inside each agent, and the per-agent tool
+        allow-listing. Defence in depth.
+      </div>
+    </div>
+
+    <h2>You've finished the series</h2>
+
+    <p>You've now read all 9 pages. You know:</p>
+
+    <ul>
+      <li><strong>What the application is</strong> (concept 00) and
+        <strong>how the codebase is organised</strong> (this page)</li>
+      <li><strong>The seven concepts</strong> that make agentic AI
+        what it is (concepts 01-07)</li>
+    </ul>
+
+    <p>Next stops:</p>
+
+    <ol>
+      <li><a href="../learn.html">docs/learn.html</a> — applies these
+        concepts to the rubric the recruiter named, with verbal-move
+        cheat sheets for fluency under pressure.</li>
+      <li><a href="../demo-guide.html">docs/demo-guide.html</a> — the
+        live talk-track. Flip "Demo Mode" in the corner; walk it once
+        out loud with a timer.</li>
+      <li><a href="https://github.com/ajayaj724/partner-ticket-agentic/blob/main/src/partner_ticket_agentic/graph.py" target="_blank"><code>src/partner_ticket_agentic/graph.py</code></a>
+        — read it end to end. 130 lines. It IS the architecture.</li>
+    </ol>
+
+    <p>You're ready.</p>
+
+  </article>
+
+  <nav class="pager">
+    <a href="07-safety.html">
+      <span class="direction">Prev · 07</span>
+      <span class="title">Safety &amp; responsible AI</span>
+    </a>
+    <a href="index.html" class="right">
+      <span class="direction">Back to</span>
+      <span class="title">Concepts index</span>
+    </a>
+  </nav>
+
+  <footer class="foot">
+    <span>Concept 08 / 08 · series complete</span>
+    <span><a href="https://github.com/ajayaj724/partner-ticket-agentic">repo</a></span>
+  </footer>
+
+</div>
+
+<script>
+  document.querySelectorAll('.check .reveal').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var ans = btn.parentElement.querySelector('.answer');
+      ans.classList.toggle('show');
+      btn.textContent = ans.classList.contains('show') ? 'Hide' : 'Reveal';
+    });
+  });
+</script>
+
+</body>
+</html>

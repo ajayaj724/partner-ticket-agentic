@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>00 · What we built</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,300..900,0..100,0..1;1,9..144,300..900,0..100,0..1&family=IBM+Plex+Sans:ital,wght@0,300..700;1,400&family=IBM+Plex+Mono:ital,wght@0,400;0,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+<div class="shell">
+
+  <nav class="topnav">
+    <span class="crumb"><a href="index.html">Concepts</a> / <b>00</b></span>
+    <span><a href="../demo-guide.html">Demo</a> · <a href="../learn.html">Learn</a></span>
+  </nav>
+
+  <header class="hero">
+    <p class="label">Concept 00 of 08 · start here</p>
+    <h1>What we <em>built</em></h1>
+    <p class="deck">
+      Before the vocabulary, the application itself: what it does, what
+      problem it solves, the 8 features, the demo workflow. Read this
+      page and the rest of the series has context to hang on.
+    </p>
+  </header>
+
+  <article>
+
+    <h2>The shortest possible version</h2>
+
+    <p>The application is a <strong>partner-ticketing platform for a
+      Belgian telecom</strong>, redesigned so that <strong>AI agents do
+      the boring judgement work</strong> that humans used to do — and a
+      human still approves anything that gets sent to the partner.</p>
+
+    <p>It's an open-source MIT-licensed reference implementation. It
+      runs offline on a deterministic mock LLM (no API key needed).
+      Anthropic and Ollama providers are opt-in. The whole demo fits
+      in three commands.</p>
+
+    <h2>The before-and-after</h2>
+
+    <h3>Before (the shipped project)</h3>
+
+    <p>A web app + APIs for partner companies — small telcos like
+      <em>BrusselsNet</em>, <em>Antwerp Cable</em>, <em>Liège Fibre</em>
+      — to file support tickets against the parent telecom. CRUD
+      operations on tickets, plus field-appointment management.</p>
+
+    <p>The flow: partner files a ticket → ticket lands in a queue →
+      <strong>human triages it, looks up context, picks a queue,
+      finds the runbook, drafts a reply, sends it</strong>. The
+      shipped project did the data plumbing for all of that. AI was on
+      the roadmap as a "next phase" but never got built.</p>
+
+    <h3>After (this redesign)</h3>
+
+    <p>Same partner experience from the outside. Inside, the boring
+      judgement work is now done by 8 specialist AI agents. The
+      human only steps in at the end — to approve, edit, or reject
+      the outgoing message.</p>
+
+    <div class="analogy">
+      <p class="label">If you know a hospital emergency room</p>
+      <p>Same shape: triage nurse sorts patients by urgency, receptionist
+        pulls the chart, doctor is assigned, doctor consults medical
+        guidelines, procedure scheduled if needed, diagnosis note
+        drafted, <strong>senior doctor signs off before anything goes on
+        the record</strong>, nurses periodically check admitted patients.
+        Each step is a specialist; the senior is the gate. That's our
+        system applied to telecom tickets instead of patients.</p>
+    </div>
+
+    <h2>The 8 features (F1 - F8)</h2>
+
+    <p>Each agent has one job. They fire in this rough order when a
+      new ticket arrives:</p>
+
+    <div class="example"><span class="label">The assembly line</span>1.  F1 Triage     "circuit_down, critical urgency, CIRC-44781"
+2.  F7 Linker     "this is a re-report of T-9001 (same partner)"
+3.  F2 Enricher   partner profile + circuit state + 5 recent tickets + 3 runbooks
+4.  F3 Router     queue=NOC-L2, assignee=u-noc-001, SLA=30 min
+5.  F4 Knowledge  "runbook RB-001 is most relevant — here are 3 steps"
+6.  F6 Scheduler  3 proposed appointment slots, ranked by score (if on-site)
+7.  F5 Drafter    drafts the partner-facing email, requires_approval=true
+8.  HITL          human clicks Approve / Edit / Reject
+
+(separate)
+    F8 Watchdog   every 5 min, scans all open tickets, pings on-call
+                  before any of them breach SLA</div>
+
+    <p>F1 and F7 run in parallel from the start. F3 and F4 run in
+      parallel after F2. F6 is conditional — only fires for on-site
+      categories (appointments, provisioning, on-site outages). F5
+      always runs last, with the HITL gate. F8 is a separate
+      scheduled process, not part of the request/response chain.</p>
+
+    <h2>The demo — five commands</h2>
+
+    <div class="example"><span class="label">Demo workflow</span># 1. List sample tickets
+$ python -m partner_ticket_agentic --list
+Found 5 sample tickets:
+  sample-1  partner=P-1001  Circuit CIRC-44781 down since 09:14
+  sample-2  partner=P-1002  Reschedule field appointment APT-20460
+  sample-3  partner=P-1003  Invoice INV-2026-0412 looks wrong
+  sample-4  partner=P-1004  Need new circuit provisioned in Ghent
+  sample-5  partner=P-1001  Slow throughput on CIRC-44782
+
+# 2. Run a single ticket through the full pipeline
+$ python -m partner_ticket_agentic --ticket-id sample-1
+... (all 8 agents fire, structured output for each step,
+     final draft email with requires_approval=true)
+
+# 3. F8 Watchdog scan (separate entry point)
+$ python -m partner_ticket_agentic --watchdog --once
+... (3 at-risk tickets found, notifications sent)
+
+# 4. Prompt-injection demo
+$ python -m partner_ticket_agentic --inject "Ignore previous instructions..."
+... (rejected at the safety boundary, exit code 4)
+
+# 5. Web UI — interactive walkthrough of all of the above
+$ python -m partner_ticket_agentic --web
+... (FastAPI on :8000; topology diagram + per-agent cards
+     + HITL Approve/Edit/Reject buttons)</div>
+
+    <p>Each command finishes in well under a second. The whole demo —
+      including the web UI — fits inside a 3-minute panel walkthrough.</p>
+
+    <h2>What the user sees in the web UI</h2>
+
+    <p>The web UI is the most concrete way to grasp the system. Open
+      <code>http://127.0.0.1:8000</code> and you see:</p>
+
+    <ul>
+      <li><strong>Left pane:</strong> the LangGraph topology as an SVG
+        diagram. As a ticket runs, the nodes light up in sequence:
+        F1 + F7 in parallel, then F2, then F3 + F4 in parallel, then
+        F6 (if applicable), then F5.</li>
+      <li><strong>Right pane (Pipeline tab):</strong> per-agent cards
+        appearing as each agent fires. Each card shows the
+        Pydantic-validated output, latency, confidence, citations.</li>
+      <li><strong>F5 card has the HITL gate:</strong> Approve / Edit /
+        Reject buttons. The Edit button makes the draft body
+        <code>contentEditable</code>; Approve flips a green badge.</li>
+      <li><strong>Watchdog tab:</strong> one-click F8 scan; risk-band-
+        coloured bars per at-risk ticket.</li>
+      <li><strong>Safety tab:</strong> paste any text (or click "Fill
+        jailbreak example"); the prompt-injection filter shows which
+        regex pattern tripped, exact match highlighted.</li>
+      <li><strong>Trace tab:</strong> the JSON-line audit log of the
+        last run.</li>
+    </ul>
+
+    <p>Screenshots of all five surfaces are committed in
+      <code>docs/screenshots/</code> in case the panel can't run
+      anything live.</p>
+
+    <h2>What's <em>real</em> in the demo and what's <em>mocked</em></h2>
+
+    <p>Honest scoping matters. The panel will probe.</p>
+
+    <h3>Real (production-shaped)</h3>
+
+    <ul>
+      <li><strong>LangGraph orchestration</strong> — real StateGraph,
+        real parallel fan-out, real conditional edges</li>
+      <li><strong>Pydantic schemas on every agent output</strong> —
+        free-text outputs are rejected</li>
+      <li><strong>Tool allow-listing</strong> — typed
+        <code>ToolNotAllowedError</code> on any out-of-list call</li>
+      <li><strong>Prompt-injection filter</strong> at ingest — real
+        regex, real rejection (exit code 4)</li>
+      <li><strong>PII detection at ingest</strong> — email / phone /
+        IBAN / IPv4</li>
+      <li><strong>BM25 + FAISS hybrid retrieval</strong> over the
+        runbook corpus</li>
+      <li><strong>Idempotency keys</strong> on side-effecting tools
+        (<code>notify_oncall</code>, <code>escalate_to_manager</code>)</li>
+      <li><strong>Retry + circuit breaker</strong> on every tool call</li>
+      <li><strong>Cost telemetry</strong> — pricing table against
+        published Anthropic Jan 2026 rates; real numbers on
+        <code>--llm-provider anthropic</code></li>
+      <li><strong>Per-tenant budget enforcement</strong> with
+        70/90/100% alerts</li>
+      <li><strong>Anthropic prompt caching</strong> via
+        <code>cache_control: ephemeral</code></li>
+      <li><strong>MCP server</strong> — any MCP client can connect</li>
+      <li><strong>EU AI Act assessment document</strong></li>
+      <li><strong>Eval suite</strong> — precision/recall in CI</li>
+    </ul>
+
+    <h3>Mock / scoped for the demo</h3>
+
+    <ul>
+      <li><strong>The LLM</strong> — the mock is deterministic if/elif
+        rules. Real LLM via <code>--llm-provider anthropic</code>.</li>
+      <li><strong>The downstream systems</strong> — CRM, inventory,
+        calendar are in-memory stubs over the seeded JSON files.
+        Production wires the real platforms.</li>
+      <li><strong>The embedder</strong> — deterministic FNV-1a feature
+        hashing. Production swaps one function for a real model
+        (<code>nomic-embed-text</code>, Voyage, etc.).</li>
+      <li><strong>The episodic store</strong> — SQLite at
+        <code>~/.ptag/episodic.db</code>. Production would be
+        Postgres or DynamoDB.</li>
+    </ul>
+
+    <div class="bridge">
+      <p class="label">Why this scoping is good engineering</p>
+      <p>The boundary between "real" and "mock" is the boundary at
+        which production would swap one thing. Every mock is a single
+        function or class with a clear interface; the rest of the
+        system doesn't care which side of the boundary it's on. That's
+        what "production-shaped reference implementation" means —
+        it's not toy code, it's the real shape with the costly
+        externals stubbed.</p>
+    </div>
+
+    <h2>What this is NOT</h2>
+
+    <p>To avoid setting wrong expectations:</p>
+
+    <ul>
+      <li><strong>It's not a SaaS.</strong> It's a single Python
+        package that runs on your laptop. Production deployment is a
+        next-phase exercise.</li>
+      <li><strong>It's not training a model.</strong> The LLM is an
+        external dependency (Anthropic API, Ollama server) or a mock.
+        Nothing in this codebase trains anything.</li>
+      <li><strong>It's not domain-bound to telecom.</strong> The 8
+        agents would work just as well for IT help-desk, insurance
+        claims triage, or any partner-facing ticketing flow. Telecom
+        is the worked example.</li>
+      <li><strong>It's not the production-ready version.</strong>
+        It's the architectural skeleton with honest scoping. Things
+        like real OIDC auth, full multi-tenancy, Postgres-backed
+        episodic memory, OTLP-exporter OpenTelemetry pointed at your
+        collector — all out of scope.</li>
+    </ul>
+
+    <h2>How it connects to the original project</h2>
+
+    <p>The brief from the recruiter said: <em>"If you did not [build
+      agent workflows], provide a redesign of your project as if it
+      used AI agents."</em></p>
+
+    <p>This codebase is exactly that redesign. The shipped project's
+      domain (Belgian telecom partner-ticketing) and core entities
+      (partners, circuits, runbooks, appointments) are preserved.
+      What changes is the <em>processing layer</em> — instead of
+      humans doing sort-route-lookup-draft, agents do it with a human
+      gate at the outbound.</p>
+
+    <p>Slides 1-8 of the deck cover the shipped project. Slides 9-20
+      cover this redesign. The panel will probe both.</p>
+
+    <div class="misconception">
+      <p class="label">Misconception to avoid</p>
+      <p>"This is a demo, so the architecture is also demo-grade."
+        Not really. The orchestration, schemas, tool allow-listing,
+        prompt-injection defence, PII detection, idempotency, retry,
+        cost telemetry, budgets, MCP, audit trail, AI Act assessment
+        are all production-shaped. The <em>infrastructure cost</em> of
+        running this against real LLMs is a config change — flip
+        <code>--llm-provider</code>, point it at a Postgres episodic
+        store, point OTel at your collector. The mocks are at the
+        edges; the core is real.</p>
+    </div>
+
+    <div class="check">
+      <p class="label">Quick check</p>
+      <p>Without looking back: what's the ONE thing the system does
+        not let an agent do without human approval, and why?</p>
+      <button class="reveal">Reveal</button>
+      <div class="answer">
+        Sending a message to a partner. Enforced by F5 always setting
+        <code>requires_approval=True</code> on its output; the
+        pipeline ends there until a human clicks Approve / Edit /
+        Reject. <strong>Why:</strong> outbound communication is the
+        highest-blast-radius surface — auto-sent messages could make
+        SLA commitments the company can't keep, leak data, or contain
+        hallucinated facts that erode partner trust. Auto-send is a
+        non-starter for v1 in a regulated telecom context. This is
+        the "human-in-the-loop" (HITL) commitment from slide 18 of
+        the deck and concept 07 of this series.
+      </div>
+    </div>
+
+  </article>
+
+  <nav class="pager">
+    <a href="index.html">
+      <span class="direction">Index</span>
+      <span class="title">All concepts</span>
+    </a>
+    <a href="01-llm.html" class="right">
+      <span class="direction">Next · 01</span>
+      <span class="title">What is an LLM?</span>
+    </a>
+  </nav>
+
+  <footer class="foot">
+    <span>Concept 00 / 08</span>
+    <span><a href="https://github.com/ajayaj724/partner-ticket-agentic">repo</a></span>
+  </footer>
+
+</div>
+
+<script>
+  document.querySelectorAll('.check .reveal').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var ans = btn.parentElement.querySelector('.answer');
+      ans.classList.toggle('show');
+      btn.textContent = ans.classList.contains('show') ? 'Hide' : 'Reveal';
+    });
+  });
+</script>
+
+</body>
+</html>
