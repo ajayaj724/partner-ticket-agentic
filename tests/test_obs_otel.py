@@ -70,9 +70,11 @@ def test_span_initialises_sdk_when_enabled(monkeypatch, reset_otel_state) -> Non
     monkeypatch.setattr(obs, "_OTEL_SDK_INITIALISED", False)
     monkeypatch.setattr(obs, "_OTEL_TRACER", None)
 
-    with obs.span("test.parent", agent="triage"):
-        with obs.span("test.child", tool="crm_lookup_partner"):
-            pass
+    with (
+        obs.span("test.parent", agent="triage"),
+        obs.span("test.child", tool="crm_lookup_partner"),
+    ):
+        pass
 
     spans = exporter.get_finished_spans()
     names = [s.name for s in spans]

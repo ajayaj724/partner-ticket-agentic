@@ -14,6 +14,7 @@ abstraction tax for no benefit at this scale.
 from __future__ import annotations
 
 import sqlite3
+import weakref
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -70,9 +71,21 @@ class EpisodicStore:
         self._conn.row_factory = sqlite3.Row
         self._conn.executescript(_SCHEMA)
         self._conn.commit()
+        # Python 3.13 raises ResourceWarning when an sqlite3.Connection is
+        # GC'd without an explicit close(); the warning is attributed to
+        # whichever test runs next, which is the same as leaking. Attach
+        # a weakref.finalize so the connection closes deterministically
+        # when the store object is collected. Callers that want eager
+        # closure can still use the context-manager (__enter__ / __exit__)
+        # or close() — both win over the finalizer.
+        self._finalizer = weakref.finalize(self, _safe_close, self._conn)
 
     def close(self) -> None:
-        self._conn.close()
+        self._finalizer.detach()
+        try:
+            self._conn.close()
+        except sqlite3.ProgrammingError:
+            pass  # already closed
 
     def __enter__(self) -> EpisodicStore:
         return self
@@ -131,6 +144,15 @@ class EpisodicStore:
                 (partner_id,),
             ).fetchone()
         return int(row["n"])
+
+
+def _safe_close(conn: sqlite3.Connection) -> None:
+    """Close a SQLite connection, swallowing ProgrammingError on double-close."""
+
+    try:
+        conn.close()
+    except sqlite3.ProgrammingError:
+        pass
 
 
 def _row_to_entry(row: sqlite3.Row) -> EpisodicEntry:
