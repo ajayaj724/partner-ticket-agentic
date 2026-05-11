@@ -195,6 +195,34 @@ def _cmd_inject(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_mcp(_args: argparse.Namespace) -> int:
+    """Boot the MCP server on stdio.
+
+    Imports the SDK lazily so the platform's core install doesn't depend on
+    the ``mcp`` package. Calls ``serve_stdio()`` which runs until the
+    transport closes.
+    """
+
+    import asyncio
+
+    try:
+        # Ensure all tool modules are imported so their @register_tool
+        # decorators have run before the MCP server lists tools.
+        from partner_ticket_agentic import tools  # noqa: F401  pyright: ignore[reportUnusedImport]
+        from partner_ticket_agentic.mcp_server import serve_stdio
+    except ImportError as exc:
+        print(
+            "the MCP server requires the [mcp] extras: "
+            "uv sync --all-extras "
+            "(or pip install partner-ticket-agentic[mcp]). "
+            f"Underlying error: {exc}",
+            file=sys.stderr,
+        )
+        return 5
+    print("Booting MCP server on stdio (Ctrl-C to stop)", file=sys.stderr)
+    return asyncio.run(serve_stdio())
+
+
 def _cmd_web(args: argparse.Namespace) -> int:
     """Boot the local web UI on 127.0.0.1:<port>."""
 
@@ -275,6 +303,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Boot the local web UI on http://127.0.0.1:8000. Requires the [web] extras.",
     )
+    actions.add_argument(
+        "--mcp",
+        action="store_true",
+        help="Boot the MCP (Model Context Protocol) server on stdio. Requires the [mcp] extras.",
+    )
 
     parser.add_argument(
         "--llm-provider",
@@ -315,6 +348,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_inject(args)
     if args.web:
         return _cmd_web(args)
+    if args.mcp:
+        return _cmd_mcp(args)
 
     parser.print_help()
     return 0
