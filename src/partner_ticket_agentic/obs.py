@@ -150,6 +150,96 @@ def bind_log_context(**fields: Any) -> Iterator[None]:
         _LOG_CONTEXT.reset(token)
 
 
+# --- OpenTelemetry compatibility (slide 15 of the deck) -------------------
+#
+# The JSON-line logger above is the demo path's audit trail. The deck also
+# commits to "OpenTelemetry traces — agent → tool → LLM → response", so
+# we offer a thin OTel adapter: spans nest exactly like the bind_log_context
+# scopes (pipeline → agent → tool → llm_call). If the [otel] extras aren't
+# installed, ``span()`` is a no-op context manager — the project keeps its
+# default zero-dependency posture.
+
+_OTEL_SDK_INITIALISED = False
+_OTEL_TRACER: Any | None = None
+
+
+def _otel_tracer() -> Any | None:
+    """Return an OpenTelemetry tracer, initialising the SDK on first use.
+
+    Opt-in via the ``PTAG_OTEL=1`` environment variable. The off-by-default
+    posture keeps pytest, the CLI demo, and CI free of OTel exporter
+    noise; flipping the env var (or pointing OTEL_EXPORTER_OTLP_ENDPOINT
+    at a collector) enables the span path. Returns ``None`` whenever the
+    extras aren't installed or the opt-in isn't set.
+
+    The exporter is :class:`SimpleSpanProcessor` writing to ``sys.stderr``
+    so spans flush synchronously — that avoids the
+    "I/O operation on closed file" race that
+    :class:`BatchSpanProcessor` hits when pytest closes stdout in
+    teardown. Production deployments would swap this for an OTLP
+    exporter pointed at the org's collector — a one-line change.
+    """
+
+    import os
+
+    global _OTEL_SDK_INITIALISED, _OTEL_TRACER
+    if _OTEL_SDK_INITIALISED:
+        return _OTEL_TRACER
+    if not os.environ.get("PTAG_OTEL"):
+        _OTEL_SDK_INITIALISED = True
+        _OTEL_TRACER = None
+        return None
+    try:
+        from opentelemetry import trace as otel_trace
+        from opentelemetry.sdk.resources import Resource
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import (
+            ConsoleSpanExporter,
+            SimpleSpanProcessor,
+        )
+    except ImportError:
+        _OTEL_SDK_INITIALISED = True
+        _OTEL_TRACER = None
+        return None
+    # Only attach our provider if no other library already attached one;
+    # otherwise we'd shadow whoever else owns it (e.g., a calling app).
+    provider = otel_trace.get_tracer_provider()
+    if not isinstance(provider, TracerProvider):
+        provider = TracerProvider(
+            resource=Resource.create({"service.name": "partner-ticket-agentic"})
+        )
+        provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter(out=sys.stderr)))
+        otel_trace.set_tracer_provider(provider)
+    _OTEL_TRACER = otel_trace.get_tracer("partner-ticket-agentic")
+    _OTEL_SDK_INITIALISED = True
+    return _OTEL_TRACER
+
+
+@contextmanager
+def span(name: str, **attributes: Any) -> Iterator[None]:
+    """Emit an OpenTelemetry span for ``name`` if the SDK is installed.
+
+    Used at the four levels of the deck's "agent → tool → LLM → response"
+    hierarchy:
+
+    * ``pipeline`` (graph.py around the full pipeline run)
+    * ``agent`` (each agent node)
+    * ``tool`` (ToolDispatcher.call)
+    * ``llm_call`` (each provider's complete)
+
+    Nesting is automatic via OTel's current-span context; the four levels
+    appear correctly parented in the exported trace. If the SDK isn't
+    available, this is a no-op so the call sites stay clean.
+    """
+
+    tracer = _otel_tracer()
+    if tracer is None:
+        yield
+        return
+    with tracer.start_as_current_span(name, attributes=attributes):
+        yield
+
+
 @contextmanager
 def trace_collector() -> Iterator[list[dict[str, Any]]]:
     """Capture every log record emitted within the block as JSON dicts.

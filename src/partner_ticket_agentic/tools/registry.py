@@ -15,7 +15,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, ClassVar
 
-from partner_ticket_agentic.obs import get_logger
+from partner_ticket_agentic.obs import get_logger, span
 from partner_ticket_agentic.safety import ToolAllowList
 
 _log = get_logger("tools")
@@ -119,7 +119,12 @@ class ToolDispatcher:
         for attempt in range(self.retry_policy.max_retries + 1):
             started = time.perf_counter()
             try:
-                result = tool.handler(**kwargs)
+                with span(
+                    f"tool.{tool_name}",
+                    agent=self.allow_list.agent,
+                    attempt=attempt + 1,
+                ):
+                    result = tool.handler(**kwargs)
             except Exception as exc:
                 last_exc = exc
                 latency_ms = int((time.perf_counter() - started) * 1000)

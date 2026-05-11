@@ -32,7 +32,7 @@ from partner_ticket_agentic.cost import (
     estimate_cost,
     estimate_tokens,
 )
-from partner_ticket_agentic.obs import current_log_context, get_logger
+from partner_ticket_agentic.obs import current_log_context, get_logger, span
 from partner_ticket_agentic.providers.base import (
     ApprovedModelRegistry,
     LLMProviderError,
@@ -85,8 +85,15 @@ class MockProvider:
             )
         started = time.perf_counter()
         try:
-            raw = rule(system or "", messages)
-            instance = schema.model_validate(raw)
+            with span(
+                "llm_call",
+                provider=self.name,
+                model=model_id,
+                tier=tier.value,
+                schema=schema_name,
+            ):
+                raw = rule(system or "", messages)
+                instance = schema.model_validate(raw)
         except ValidationError as exc:
             raise LLMProviderError(
                 f"mock rule for {schema_name!r} produced output that failed schema validation: {exc}"

@@ -39,6 +39,10 @@ web = [
 mcp = [
     "mcp>=1.2",
 ]
+otel = [
+    "opentelemetry-api>=1.27",
+    "opentelemetry-sdk>=1.27",
+]
 
 [project.scripts]
 partner-ticket-agentic = "partner_ticket_agentic.cli:main"

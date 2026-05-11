@@ -27,7 +27,7 @@ from partner_ticket_agentic.agents.router import router_node
 from partner_ticket_agentic.agents.scheduler import scheduler_node, should_run
 from partner_ticket_agentic.agents.triage import triage_node
 from partner_ticket_agentic.memory.working import TicketState
-from partner_ticket_agentic.obs import bind_log_context, get_logger, new_trace_id
+from partner_ticket_agentic.obs import bind_log_context, get_logger, new_trace_id, span
 from partner_ticket_agentic.providers import LLMProvider, MockProvider
 
 _log = get_logger("graph")
@@ -161,6 +161,14 @@ def run_pipeline(
         bind_log_context(trace_id=trace_id, ticket_id=ticket["ticket_id"]),
         bind_ledger(ledger),
         bind_budget(budget_state),
+        span(
+            "pipeline",
+            **{
+                "trace_id": trace_id,
+                "ticket_id": ticket["ticket_id"],
+                "partner_id": ticket.get("partner_id", ""),
+            },
+        ),
     ):
         _log.info(
             "pipeline_start",
