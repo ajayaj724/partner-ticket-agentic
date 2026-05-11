@@ -1,0 +1,461 @@
+/* Shared stylesheet for the concept-explainer pages.
+ * Editorial paper aesthetic — Fraunces + IBM Plex Sans + IBM Plex Mono.
+ * Deep-amber accent so the concept set reads as a distinct sibling
+ * of the demo-guide (oxblood) and the learn-guide (ink-teal).
+ */
+
+:root {
+  --bg: #f5f1ea;
+  --bg-deep: #efe9dd;
+  --paper-card: #fbf8f1;
+  --ink: #1a1a2e;
+  --ink-soft: #2c2c3e;
+  --rule: #d8cdb4;
+  --rule-strong: #b8a982;
+  --muted: #6b6354;
+  --faint: #a89c83;
+  --accent: #a8741f;          /* deep amber — scholarly, textbook-warm */
+  --accent-deep: #7d5616;
+  --accent-soft: #f0e1c4;
+  --ok: #2d5d2f;
+  --ok-soft: #dde8d9;
+  --warn: #8a5a00;
+  --warn-soft: #f5e7c4;
+  --danger: #7b2025;
+  --danger-soft: #f4d9d4;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "IBM Plex Sans", sans-serif;
+  font-size: 16px;
+  line-height: 1.65;
+  font-feature-settings: "ss01", "ss02", "cv01";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+    radial-gradient(rgba(0,0,0,0.02) 1px, transparent 1px);
+  background-size: 3px 3px, 7px 7px;
+  background-position: 0 0, 1px 2px;
+  mix-blend-mode: multiply;
+  opacity: 0.6;
+  z-index: 0;
+}
+
+.shell {
+  position: relative;
+  z-index: 1;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 56px 28px 96px;
+}
+
+/* ============================================================ Top nav */
+
+.topnav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 48px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11.5px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.topnav a {
+  color: var(--muted);
+  text-decoration: none;
+  text-transform: uppercase;
+  padding: 3px 0;
+  border-bottom: 1px solid transparent;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+
+.topnav a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
+.topnav .crumb { letter-spacing: 0.06em; }
+.topnav .crumb b { color: var(--ink); font-weight: 500; }
+
+/* ============================================================ Hero */
+
+.hero {
+  margin-bottom: 56px;
+}
+
+.hero .label {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 12px 0;
+}
+
+.hero h1 {
+  font-family: "Fraunces", serif;
+  font-variation-settings: "opsz" 144, "SOFT" 30, "WONK" 1;
+  font-weight: 500;
+  font-size: clamp(34px, 5vw, 52px);
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+  margin: 0 0 16px 0;
+  color: var(--ink);
+}
+
+.hero h1 em {
+  font-style: italic;
+  font-variation-settings: "opsz" 144, "SOFT" 100, "WONK" 1;
+  color: var(--accent);
+}
+
+.hero .deck {
+  font-family: "Fraunces", serif;
+  font-variation-settings: "opsz" 24;
+  font-weight: 300;
+  font-size: 19px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.hero .deck em { font-style: italic; color: var(--accent); }
+
+/* ============================================================ Body type */
+
+article > p, article > ul, article > ol { margin: 0 0 16px 0; }
+article > ul, article > ol { padding-left: 26px; }
+article > li { margin-bottom: 5px; }
+
+article h2 {
+  font-family: "Fraunces", serif;
+  font-variation-settings: "opsz" 72;
+  font-weight: 500;
+  font-size: 26px;
+  letter-spacing: -0.01em;
+  margin: 48px 0 12px 0;
+  color: var(--ink);
+  border-top: 1px solid var(--rule);
+  padding-top: 24px;
+}
+
+article h2:first-child {
+  border-top: 0;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+article h3 {
+  font-family: "Fraunces", serif;
+  font-weight: 500;
+  font-size: 20px;
+  letter-spacing: -0.005em;
+  margin: 28px 0 10px 0;
+  color: var(--ink);
+}
+
+a {
+  color: var(--accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+a:hover { color: var(--accent-deep); }
+
+code {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.88em;
+  background: var(--bg-deep);
+  padding: 1px 6px;
+  border-radius: 2px;
+  color: var(--ink-soft);
+}
+
+strong, b { color: var(--ink); font-weight: 600; }
+
+/* ============================================================ Analogy callout */
+
+.analogy {
+  margin: 22px 0;
+  padding: 22px 26px;
+  background: var(--paper-card);
+  border-left: 3px solid var(--accent);
+}
+
+.analogy .label {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 10px 0;
+  font-weight: 600;
+}
+
+.analogy p {
+  font-family: "Fraunces", serif;
+  font-variation-settings: "opsz" 24;
+  font-weight: 300;
+  font-size: 17px;
+  line-height: 1.55;
+  font-style: italic;
+  margin: 0 0 8px 0;
+  color: var(--ink-soft);
+}
+
+.analogy p:last-child { margin-bottom: 0; }
+
+/* ============================================================ Misconception (red) */
+
+.misconception {
+  margin: 22px 0;
+  padding: 18px 22px;
+  background: var(--danger-soft);
+  border-left: 3px solid var(--danger);
+}
+
+.misconception .label {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--danger);
+  margin: 0 0 8px 0;
+  font-weight: 600;
+}
+
+.misconception p { margin: 0 0 6px 0; font-size: 14.5px; color: var(--ink-soft); }
+.misconception p:last-child { margin-bottom: 0; }
+
+/* ============================================================ Concrete example */
+
+.example {
+  margin: 22px 0;
+  padding: 20px 22px;
+  background: var(--ink);
+  color: #d8cdb4;
+  border-left: 3px solid var(--accent);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12.5px;
+  line-height: 1.55;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.example .label {
+  display: block;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+/* ============================================================ Telecom-context bridge */
+
+.bridge {
+  margin: 22px 0;
+  padding: 20px 22px;
+  background: var(--accent-soft);
+  border-left: 3px solid var(--accent);
+}
+
+.bridge .label {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent-deep);
+  margin: 0 0 10px 0;
+  font-weight: 600;
+}
+
+.bridge p { margin: 0 0 8px 0; font-size: 14.5px; color: var(--ink-soft); }
+.bridge p:last-child { margin-bottom: 0; }
+.bridge code { background: rgba(0,0,0,0.05); }
+
+/* ============================================================ Quick check */
+
+.check {
+  margin: 32px 0 12px;
+  padding: 22px 24px;
+  background: var(--paper-card);
+  border: 1px solid var(--rule);
+}
+
+.check .label {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 12px 0;
+  font-weight: 600;
+}
+
+.check p {
+  font-family: "Fraunces", serif;
+  font-variation-settings: "opsz" 24;
+  font-weight: 400;
+  font-size: 17px;
+  margin: 0 0 14px 0;
+  color: var(--ink);
+}
+
+.check button {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid var(--rule-strong);
+  color: var(--muted);
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+.check button:hover { color: var(--accent); border-color: var(--accent); }
+
+.check .answer {
+  display: none;
+  margin-top: 14px;
+  padding: 14px 16px;
+  background: var(--bg);
+  border-left: 3px solid var(--ok);
+  font-size: 14.5px;
+  color: var(--ink-soft);
+}
+.check .answer.show { display: block; }
+
+/* ============================================================ Next concept */
+
+.pager {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 64px;
+  padding-top: 24px;
+  border-top: 6px solid var(--ink);
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.pager a {
+  flex: 1 1 220px;
+  display: block;
+  padding: 16px 18px;
+  background: var(--paper-card);
+  border: 1px solid var(--rule);
+  text-decoration: none;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.pager a:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.pager .direction {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: block;
+  margin-bottom: 6px;
+}
+
+.pager .title {
+  font-family: "Fraunces", serif;
+  font-weight: 500;
+  font-size: 17px;
+  color: var(--ink);
+  line-height: 1.3;
+}
+
+.pager .right { text-align: right; }
+
+/* ============================================================ Index card grid */
+
+.cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  margin: 24px 0 56px;
+}
+
+@media (min-width: 720px) {
+  .cards { grid-template-columns: 1fr 1fr; }
+}
+
+.cards a {
+  display: block;
+  padding: 22px 24px;
+  background: var(--paper-card);
+  border: 1px solid var(--rule);
+  text-decoration: none;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.cards a:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.cards .num {
+  font-family: "Fraunces", serif;
+  font-variation-settings: "opsz" 96, "WONK" 1;
+  font-weight: 300;
+  font-size: 36px;
+  line-height: 0.9;
+  color: var(--accent);
+  letter-spacing: -0.02em;
+  display: block;
+  margin-bottom: 12px;
+}
+
+.cards .title {
+  font-family: "Fraunces", serif;
+  font-weight: 500;
+  font-size: 19px;
+  letter-spacing: -0.005em;
+  margin: 0 0 6px 0;
+  color: var(--ink);
+}
+
+.cards .blurb {
+  font-size: 13.5px;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* ============================================================ Footer */
+
+.foot {
+  margin-top: 80px;
+  padding-top: 16px;
+  border-top: 6px solid var(--ink);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.foot a { color: var(--muted); }

@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>02 · What is an "agent"?</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,300..900,0..100,0..1;1,9..144,300..900,0..100,0..1&family=IBM+Plex+Sans:ital,wght@0,300..700;1,400&family=IBM+Plex+Mono:ital,wght@0,400;0,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+<div class="shell">
+
+  <nav class="topnav">
+    <span class="crumb"><a href="index.html">Concepts</a> / <b>02</b></span>
+    <span><a href="../demo-guide.html">Demo</a> · <a href="../learn.html">Learn</a></span>
+  </nav>
+
+  <header class="hero">
+    <p class="label">Concept 02 of 07</p>
+    <h1>What is an <em>agent</em>?</h1>
+    <p class="deck">
+      The leap from <em>calling an LLM</em> to <em>building an agent</em>
+      is the conceptual centre of this whole project. The word "agent" is
+      overloaded in industry; let's nail down what we mean by it.
+    </p>
+  </header>
+
+  <article>
+
+    <h2>The shortest possible definition</h2>
+
+    <p>An <strong>agent</strong> is a small piece of software that:</p>
+    <ol>
+      <li>Has a <strong>goal</strong> (one specific job to do)</li>
+      <li>Uses an <strong>LLM</strong> to make decisions about that job</li>
+      <li>Optionally uses <strong>tools</strong> (functions that fetch data
+        or take actions in the outside world)</li>
+      <li>Returns a <strong>structured result</strong></li>
+    </ol>
+
+    <p>That's it. An "agent" in our system isn't AGI; it's a focused
+      function with an LLM at its heart and tools at its hands.</p>
+
+    <div class="analogy">
+      <p class="label">If you know your shipped Quarkus project</p>
+      <p>Each of your Quarkus Lambdas had one job (talk to downstream
+        system A, B, or C). It had a typed input, typed output, and a
+        focused responsibility. An agent in our system is shaped the
+        same way — except instead of a hardcoded business rule, an LLM
+        decides what to do given the input, and the output is
+        Pydantic-validated like a Quarkus DTO would be.</p>
+    </div>
+
+    <h2>Why call it an "agent" and not just "a function"?</h2>
+
+    <p>Three things distinguish an agent from a regular function:</p>
+
+    <h3>1. It uses an LLM in its decision-making</h3>
+
+    <p>A regular function has hardcoded logic. <code>route(ticket)</code>
+      is a chain of <code>if/else</code> statements. An agent uses an LLM
+      to handle the part of the decision that's <em>hard to express in
+      if/else</em>. For example, our F1 Triage agent uses an LLM to
+      classify free-text into a category — because writing if/else for
+      every possible way a partner might phrase "my circuit is down" is
+      a losing battle.</p>
+
+    <h3>2. It can use tools dynamically</h3>
+
+    <p>An agent doesn't have to call all its tools every time. It can
+      look at the input, decide which tools are relevant, and call only
+      those. (Our F2 Enricher technically <em>could</em> work this way;
+      today it calls all 4 tools every time because the surface is small
+      — but the architecture supports dynamic tool selection.)</p>
+
+    <h3>3. It exposes a typed contract</h3>
+
+    <p>An agent's job is to <em>always</em> return a specific shape, no
+      matter what the LLM said. The contract is the Pydantic schema:</p>
+
+    <div class="example"><span class="label">F1 Triage's typed contract</span>class TriageOutput(BaseModel):
+    category: Literal["circuit_down", "throughput_degraded",
+                      "appointment_request", "billing",
+                      "provisioning", "other"]
+    urgency: Literal["critical", "high", "medium", "low"]
+    entities: Entities
+    confidence: float  # 0.0 - 1.0
+    rationale: str</div>
+
+    <p>If the LLM returns something that doesn't fit this shape, the
+      agent rejects it with a <code>ValidationError</code> rather than
+      passing the mess downstream. That's what "schema-first" means.</p>
+
+    <h2>What makes a system "agentic"?</h2>
+
+    <p>"Agentic AI" is the industry term for a system built out of
+      multiple agents that work together — usually with some
+      orchestration logic deciding which agent runs when, in what order,
+      and what state to pass between them.</p>
+
+    <p>The opposite of "agentic" would be:</p>
+    <ul>
+      <li><strong>A single LLM call.</strong> You ask ChatGPT to "handle
+        this ticket end-to-end" and trust whatever comes back.</li>
+      <li><strong>A chain of LLM calls in a fixed sequence</strong> with
+        no real branching or tool use. (This is sometimes called a
+        "pipeline" or "chain" — it's a degenerate case of an agentic
+        system.)</li>
+    </ul>
+
+    <p>Our system is agentic because:</p>
+    <ol>
+      <li>It has <strong>8 separate agents</strong>, each with a focused job</li>
+      <li>The agents <strong>fan out and join</strong> (F1+F7 parallel; F3+F4 parallel)</li>
+      <li>There's <strong>conditional routing</strong> (F6 only fires for on-site categories)</li>
+      <li>Agents <strong>use tools</strong> (F2's 4 lookups, F8's notify_oncall, etc.)</li>
+      <li>There's a <strong>human-in-the-loop gate</strong> (F5 never auto-sends)</li>
+    </ol>
+
+    <div class="bridge">
+      <p class="label">For the panel</p>
+      <p>When the recruiter's rubric says "if you built agent workflows
+        describe agentic framework / multi-agent orchestration / tool
+        use", they're testing whether you understand what makes a
+        system <em>agentic</em> vs. just calling ChatGPT in a loop. The
+        five points above are the answer.</p>
+    </div>
+
+    <h2>How an agent actually runs (the inside view)</h2>
+
+    <p>Here's what happens inside our F1 Triage agent when a ticket arrives:</p>
+
+    <div class="example"><span class="label">agents/triage.py — simplified</span># 1. Safety check at the boundary
+assert_safe_input(state.description)  # raises if jailbreak detected
+
+# 2. Build the prompt
+messages = [Message(role="user", content=state.description)]
+system_prompt = "You are a triage agent for a Belgian telecom..."
+
+# 3. Try the LLM path
+try:
+    result = provider.complete(
+        messages, schema=TriageOutput, tier=Tier.SMALL,
+        system=system_prompt,
+    )
+except LLMProviderError:
+    # 4. Fallback: keyword-based classifier, confidence capped at 0.5
+    result = _triage_fallback(state.description)
+
+# 5. Return a typed dict for LangGraph to merge into state
+return {"triage": result.model_dump()}</div>
+
+    <p>Notice what's NOT in here:</p>
+    <ul>
+      <li>No tool calls (F1 is pure LLM, no external lookups)</li>
+      <li>No retries (the LLM provider's tool-use either succeeds or fails)</li>
+      <li>No "agent loop" — we don't let the LLM call itself in a circle</li>
+    </ul>
+
+    <p>That last point is important. Some agentic frameworks let an
+      agent decide for itself when to stop. We don't — <strong>our
+      graph decides when each agent runs and when it stops</strong>.
+      That's the "deterministic orchestration" commitment from concept
+      03.</p>
+
+    <div class="misconception">
+      <p class="label">Misconception to avoid</p>
+      <p>"An agent is autonomous — it just goes off and does things."
+        That's one definition (think: an LLM-powered web browser that
+        clicks around). In our system agents are <em>much more
+        constrained</em>: each runs once per ticket, in a defined
+        position in the graph, with a fixed output schema and a fixed
+        tool allow-list. Bounded autonomy. That's the safer pattern
+        for production.</p>
+    </div>
+
+    <h2>Why 8 agents and not one big one?</h2>
+
+    <p>You could imagine asking a single huge LLM call to do everything
+      — classify the ticket, look up the partner, route it, draft a
+      reply, all in one go. Why don't we?</p>
+
+    <p>Three reasons:</p>
+
+    <ol>
+      <li><strong>Cost.</strong> A small model can classify a ticket
+        accurately for $0.0001. Asking a frontier model to do
+        everything end-to-end might cost $0.05 per ticket. That's
+        500× more expensive for less reliable results.</li>
+      <li><strong>Reliability.</strong> Each agent has one job, one
+        schema, one fallback. If F4 Knowledge fails, the rest of the
+        pipeline still runs and the engineer sees what wasn't fetched.
+        A single end-to-end LLM call fails as one big blob — no partial
+        recovery.</li>
+      <li><strong>Auditability.</strong> Each agent emits a log line
+        with <code>trace_id</code>, latency, tokens. You can replay
+        exactly what each one did, and the eval suite can score each
+        in isolation. With one big call, you can't tell <em>which</em>
+        step went wrong.</li>
+    </ol>
+
+    <div class="check">
+      <p class="label">Quick check</p>
+      <p>The panel asks: "Couldn't you just call Claude Opus once with
+        the whole ticket and let it figure it out?" — what's your answer?</p>
+      <button class="reveal">Reveal</button>
+      <div class="answer">
+        You could, but you'd trade three things. <strong>Cost</strong>: small
+        models classify accurately for &lt;$0.001; Opus end-to-end costs
+        ~500× more. <strong>Reliability</strong>: partial failures (one tool
+        timing out) don't cleanly recover from a monolithic call. <strong>Auditability</strong>:
+        the eval suite scores each agent independently — F1 100%, F3 100%,
+        F4 93%; with one big call you can't tell which step went wrong.
+        Specialist agents with structured outputs are the production-shaped
+        answer; one big call is the prototype shape.
+      </div>
+    </div>
+
+  </article>
+
+  <nav class="pager">
+    <a href="01-llm.html">
+      <span class="direction">Prev · 01</span>
+      <span class="title">What is an LLM?</span>
+    </a>
+    <a href="03-orchestration.html" class="right">
+      <span class="direction">Next · 03</span>
+      <span class="title">Multi-agent orchestration</span>
+    </a>
+  </nav>
+
+  <footer class="foot">
+    <span>Concept 02 / 07</span>
+    <span><a href="https://github.com/ajayaj724/partner-ticket-agentic">repo</a></span>
+  </footer>
+
+</div>
+
+<script>
+  document.querySelectorAll('.check .reveal').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var ans = btn.parentElement.querySelector('.answer');
+      ans.classList.toggle('show');
+      btn.textContent = ans.classList.contains('show') ? 'Hide' : 'Reveal';
+    });
+  });
+</script>
+
+</body>
+</html>

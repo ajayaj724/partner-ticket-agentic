@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>06 · Three memory tiers</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,300..900,0..100,0..1;1,9..144,300..900,0..100,0..1&family=IBM+Plex+Sans:ital,wght@0,300..700;1,400&family=IBM+Plex+Mono:ital,wght@0,400;0,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+<div class="shell">
+
+  <nav class="topnav">
+    <span class="crumb"><a href="index.html">Concepts</a> / <b>06</b></span>
+    <span><a href="../demo-guide.html">Demo</a> · <a href="../learn.html">Learn</a></span>
+  </nav>
+
+  <header class="hero">
+    <p class="label">Concept 06 of 07</p>
+    <h1>Three <em>memory</em> tiers</h1>
+    <p class="deck">
+      Agents need state. But state spans different time-scales and
+      different scopes. We keep three tiers — working, episodic, long-term
+      — and <strong>we never conflate them</strong>. Here's why.
+    </p>
+  </header>
+
+  <article>
+
+    <h2>Why "memory" is a concept at all</h2>
+
+    <p>A regular HTTP API is stateless — each request stands alone. An
+      agent isn't. The agents in our pipeline have to share state
+      across their run (F2's output feeds F3 and F4). The partner's
+      history matters across tickets (this is the 12th
+      circuit-down report this month). Organisational knowledge
+      matters across all partners (the runbook for circuit outages
+      hasn't changed in a year).</p>
+
+    <p>Three different time-scales. Three different scopes. Three
+      different lifetimes. That's why we keep three separate stores.</p>
+
+    <h2>The three tiers</h2>
+
+    <table style="width:100%; border-collapse: collapse; margin: 18px 0; font-size: 14px;">
+      <thead>
+        <tr style="border-bottom: 1px solid var(--ink);">
+          <th style="text-align:left; padding: 10px 8px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 500;">Tier</th>
+          <th style="text-align:left; padding: 10px 8px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 500;">Scope</th>
+          <th style="text-align:left; padding: 10px 8px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 500;">Lifetime</th>
+          <th style="text-align:left; padding: 10px 8px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 500;">Store</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom: 1px solid var(--rule);">
+          <td style="padding: 10px 8px; vertical-align: top;"><strong>Working</strong></td>
+          <td style="padding: 10px 8px; vertical-align: top;">One ticket flow</td>
+          <td style="padding: 10px 8px; vertical-align: top;">Seconds (in-memory)</td>
+          <td style="padding: 10px 8px; vertical-align: top;">LangGraph <code>TicketState</code></td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--rule);">
+          <td style="padding: 10px 8px; vertical-align: top;"><strong>Episodic</strong></td>
+          <td style="padding: 10px 8px; vertical-align: top;">Per partner</td>
+          <td style="padding: 10px 8px; vertical-align: top;">Across runs, persisted</td>
+          <td style="padding: 10px 8px; vertical-align: top;">SQLite at <code>~/.ptag/episodic.db</code></td>
+        </tr>
+        <tr>
+          <td style="padding: 10px 8px; vertical-align: top;"><strong>Long-term</strong></td>
+          <td style="padding: 10px 8px; vertical-align: top;">Org-wide</td>
+          <td style="padding: 10px 8px; vertical-align: top;">Indefinite</td>
+          <td style="padding: 10px 8px; vertical-align: top;">FAISS + SQLite</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Working memory — the LangGraph state</h3>
+
+    <p>Working memory is the in-memory state object passed between
+      nodes in the graph. It lives for the duration of one ticket
+      flow. F1's output lands in it. F2 reads from it and writes
+      enrichment. F5 reads everything before drafting.</p>
+
+    <div class="example"><span class="label">memory/working.py</span>class TicketState(BaseModel):
+    ticket_id: str
+    partner_id: str
+    subject: str
+    description: str
+
+    triage: dict | None = None
+    enrichment: dict | None = None
+    routing: dict | None = None
+    knowledge: dict | None = None
+    related: dict | None = None
+    schedule: dict | None = None
+    draft: dict | None = None
+
+    trace_id: str
+    cost: dict | None = None
+    pii_findings: list[dict] = []</div>
+
+    <p>When the pipeline finishes, the state is discarded. The trace
+      log captures what happened; the state itself doesn't survive.</p>
+
+    <h3>Episodic memory — per-partner, persisted</h3>
+
+    <p>"Episodic" comes from cognitive science — memories of specific
+      events (the time you went to the concert; the time you had
+      pasta in Rome). Our agents' episodic memory is per-partner: a
+      compact summary of past ticket flows for partner <code>P-1001</code>.</p>
+
+    <p>F2 Enricher's <code>ticket_history_recent</code> tool reads this
+      tier. The Watchdog (F8) can read it to spot partners who have
+      had multiple incidents in a week. The Linker (F7) uses it (via
+      similarity over recent tickets from the <em>same partner</em>) to
+      detect duplicates.</p>
+
+    <div class="example"><span class="label">memory/episodic.py</span>store = EpisodicStore("~/.ptag/episodic.db")
+
+# Write on ticket completion
+store.record(
+    partner_id="P-1001",
+    ticket_id="T-A",
+    category="circuit_down",
+    urgency="critical",
+    summary="CIRC-44781 outage; resolved in 47m",
+)
+
+# Read in F2 Enricher
+recent = store.recent("P-1001", limit=10)</div>
+
+    <p>SQLite as the demo backend. Production would be Postgres or
+      DynamoDB depending on the platform's existing stack.</p>
+
+    <h3>Long-term memory — org-wide knowledge</h3>
+
+    <p>Long-term memory holds organisational knowledge that's shared
+      across all partners. In our system that's the runbook corpus,
+      indexed two ways (FAISS for dense, BM25 for lexical) plus
+      structured facts (categories, queue mappings, SLA policies) in
+      SQLite.</p>
+
+    <p>F4 Knowledge reads this tier (the runbook search; see
+      concept 05). F3 Router reads the SLA policy table from here.</p>
+
+    <div class="bridge">
+      <p class="label">If you know your shipped project's data tier</p>
+      <p>Your shipped project split DynamoDB (single-key lookups) and
+        OpenSearch (faceted search) because the access patterns were
+        different. Same thinking here — the three memory tiers exist
+        because the <em>access pattern is different per tier</em>:
+        in-memory for in-flight state, indexed-by-partner for
+        episodic, semantic + lexical for long-term.</p>
+    </div>
+
+    <h2>The rule: never conflate the tiers</h2>
+
+    <p>The design doc names this explicitly: <em>"three memory tiers,
+      never conflated"</em>. Why?</p>
+
+    <p>It's tempting to dump everything into one big "memory" store —
+      a single vector DB with partner_id as metadata, working state
+      mixed in, runbooks alongside ticket summaries. Some teams do this
+      with Pinecone or Weaviate and call it "the agent's memory".</p>
+
+    <p>The problem: when you conflate tiers, you lose:</p>
+
+    <ul>
+      <li><strong>Access control.</strong> The Enricher should be able
+        to read partner P-1001's episodic memory but not P-1002's.
+        Tenant scoping is much easier when episodic is a separate
+        table keyed by partner_id.</li>
+      <li><strong>Lifecycle control.</strong> GDPR right-to-erasure
+        means we have to purge per-partner data on offboarding. If
+        partner data is mixed with org-wide knowledge, you have to
+        diff every embedding. If episodic is a separate tier, you
+        just <code>DELETE FROM episodic WHERE partner_id = ?</code>.</li>
+      <li><strong>Cost control.</strong> Working memory is free
+        (in-process). Episodic is cheap (a SQLite table). Long-term
+        is the expensive one (FAISS index, embedding model calls).
+        Mixing them means you pay long-term costs for working-memory
+        operations.</li>
+      <li><strong>Debuggability.</strong> When something goes wrong,
+        knowing which tier the bad data came from is half the
+        diagnosis. "The triage label is wrong" → working memory.
+        "We forgot the partner's tier" → episodic. "We cited the
+        wrong runbook" → long-term. Three tiers, three different
+        root causes.</li>
+    </ul>
+
+    <div class="misconception">
+      <p class="label">Misconception to avoid</p>
+      <p>"Agentic systems have <em>a</em> memory" — singular. They
+        don't. Production-grade systems have at minimum the three
+        tiers above; many have more (session memory, user-preference
+        memory, tool-result cache). Conflating them is the
+        architectural mistake most teams make in their first agentic
+        deployment. The discipline of separation is what makes the
+        system maintainable past month three.</p>
+    </div>
+
+    <h2>GDPR right-to-erasure — a concrete example</h2>
+
+    <p>A partner offboards. GDPR says we have to purge everything
+      personal about them within 30 days. With three tiers, the flow
+      is clean:</p>
+
+    <ol>
+      <li><strong>Working memory:</strong> nothing to do — it never
+        persisted across runs.</li>
+      <li><strong>Episodic memory:</strong> <code>DELETE FROM episodic_entries WHERE partner_id = 'P-1001'</code>. One SQL statement.</li>
+      <li><strong>Long-term memory:</strong> runbooks are org-wide,
+        not partner-specific — nothing to purge. Structured facts: same.</li>
+    </ol>
+
+    <p>If you'd dumped partner-specific data into a shared vector
+      store, step 3 would be: re-embed every document, diff the index,
+      remove vectors. Expensive and error-prone.</p>
+
+    <div class="check">
+      <p class="label">Quick check</p>
+      <p>The panel asks: "Where do you store the system's
+        understanding of a specific partner's preferences and
+        history — and why there?"</p>
+      <button class="reveal">Reveal</button>
+      <div class="answer">
+        Episodic memory — SQLite, keyed by <code>partner_id</code>,
+        persisted across runs. <strong>Per-partner</strong> because
+        the scope is one tenant; we don't want F2 Enricher accidentally
+        surfacing P-1002's preferences when handling P-1001's ticket.
+        <strong>SQLite</strong> because the access pattern is "give me
+        the last N rows for this partner" — that's an indexed scan,
+        not a vector search. We keep it separate from working memory
+        (in-process) and long-term (org-wide FAISS) because the three
+        have different access patterns, different lifecycles, and
+        different access-control requirements.
+      </div>
+    </div>
+
+  </article>
+
+  <nav class="pager">
+    <a href="05-rag.html">
+      <span class="direction">Prev · 05</span>
+      <span class="title">RAG &amp; retrieval</span>
+    </a>
+    <a href="07-safety.html" class="right">
+      <span class="direction">Next · 07</span>
+      <span class="title">Safety &amp; responsible AI</span>
+    </a>
+  </nav>
+
+  <footer class="foot">
+    <span>Concept 06 / 07</span>
+    <span><a href="https://github.com/ajayaj724/partner-ticket-agentic">repo</a></span>
+  </footer>
+
+</div>
+
+<script>
+  document.querySelectorAll('.check .reveal').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var ans = btn.parentElement.querySelector('.answer');
+      ans.classList.toggle('show');
+      btn.textContent = ans.classList.contains('show') ? 'Hide' : 'Reveal';
+    });
+  });
+</script>
+
+</body>
+</html>

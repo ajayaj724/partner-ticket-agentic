@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Concepts — Partner-Ticketing Agentic Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,300..900,0..100,0..1;1,9..144,300..900,0..100,0..1&family=IBM+Plex+Sans:ital,wght@0,300..700;1,400&family=IBM+Plex+Mono:ital,wght@0,400;0,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+<div class="shell">
+
+  <nav class="topnav">
+    <span class="crumb"><b>Concepts</b></span>
+    <span><a href="../demo-guide.html">Demo guide</a> · <a href="../learn.html">Learn</a></span>
+  </nav>
+
+  <header class="hero">
+    <p class="label">Concept series · for the curious beginner</p>
+    <h1>Start with <em>why</em>, then the how</h1>
+    <p class="deck">
+      Seven short pages — each answers one question in plain English with an
+      analogy from your existing world (telecom backend, AWS, Quarkus). Read
+      them in order the first time. After that, dip in anywhere.
+    </p>
+  </header>
+
+  <div class="cards">
+
+    <a href="01-llm.html">
+      <span class="num">01</span>
+      <div class="title">What is an LLM?</div>
+      <p class="blurb">Why a language model is fundamentally different from regular code — and why that difference shapes every architectural choice that follows.</p>
+    </a>
+
+    <a href="02-agent.html">
+      <span class="num">02</span>
+      <div class="title">What is an &ldquo;agent&rdquo;?</div>
+      <p class="blurb">The leap from <em>calling ChatGPT</em> to <em>building an agent</em>. What makes something &ldquo;agentic&rdquo; and why anyone bothers.</p>
+    </a>
+
+    <a href="03-orchestration.html">
+      <span class="num">03</span>
+      <div class="title">Multi-agent orchestration</div>
+      <p class="blurb">Why we use 8 agents instead of one big one. State machines, LangGraph, and parallel fan-out — explained without the buzzwords.</p>
+    </a>
+
+    <a href="04-tools.html">
+      <span class="num">04</span>
+      <div class="title">Tools &amp; the security primitive</div>
+      <p class="blurb">What "tools" mean in the LLM world. Why per-agent allow-listing is the equivalent of IAM roles in AWS — and why that matters.</p>
+    </a>
+
+    <a href="05-rag.html">
+      <span class="num">05</span>
+      <div class="title">RAG &amp; retrieval</div>
+      <p class="blurb">Embeddings, vector search, BM25, hybrid retrieval — the family of techniques that let the LLM use your private knowledge.</p>
+    </a>
+
+    <a href="06-memory.html">
+      <span class="num">06</span>
+      <div class="title">Three memory tiers</div>
+      <p class="blurb">Working / episodic / long-term. Why we keep them separate, and what happens in production when teams blur them together.</p>
+    </a>
+
+    <a href="07-safety.html">
+      <span class="num">07</span>
+      <div class="title">Safety &amp; responsible AI</div>
+      <p class="blurb">Prompt injection, PII detection, human-in-the-loop, EU AI Act. The five primitives that keep an agentic system from going sideways.</p>
+    </a>
+
+  </div>
+
+  <footer class="foot">
+    <span>Companion to <code>docs/learn.html</code> and <code>docs/demo-guide.html</code></span>
+    <span><a href="https://github.com/ajayaj724/partner-ticket-agentic">repo</a></span>
+  </footer>
+
+</div>
+</body>
+</html>

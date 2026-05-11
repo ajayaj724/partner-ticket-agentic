@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>05 · RAG &amp; retrieval</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,300..900,0..100,0..1;1,9..144,300..900,0..100,0..1&family=IBM+Plex+Sans:ital,wght@0,300..700;1,400&family=IBM+Plex+Mono:ital,wght@0,400;0,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+<div class="shell">
+
+  <nav class="topnav">
+    <span class="crumb"><a href="index.html">Concepts</a> / <b>05</b></span>
+    <span><a href="../demo-guide.html">Demo</a> · <a href="../learn.html">Learn</a></span>
+  </nav>
+
+  <header class="hero">
+    <p class="label">Concept 05 of 07</p>
+    <h1>RAG &amp; <em>retrieval</em></h1>
+    <p class="deck">
+      An LLM only knows what it was trained on. <strong>Retrieval-augmented
+      generation</strong> is how we give it access to your private
+      data — runbooks, ticket history, internal docs — at query time.
+      The family of techniques behind it.
+    </p>
+  </header>
+
+  <article>
+
+    <h2>The problem RAG solves</h2>
+
+    <p>You ask Claude: "Which runbook should I follow for a CIRC-44781
+      outage on a gold-tier partner?" Claude has never seen your
+      runbooks. Its training data ended in early 2026, and it doesn't
+      know about your internal telecom procedures.</p>
+
+    <p>Two bad options:</p>
+    <ol>
+      <li><strong>Fine-tune the model on your runbooks.</strong>
+        Expensive ($10k+), slow (days), and you have to redo it every
+        time a runbook changes.</li>
+      <li><strong>Stuff every runbook into every prompt.</strong> Even
+        if Claude's context window is 1M tokens, you'd burn $0.50 per
+        ticket on input tokens alone, and the relevant content gets
+        diluted.</li>
+    </ol>
+
+    <p>The good option is <strong>retrieval-augmented generation
+      (RAG)</strong>: at query time, fetch only the <em>relevant</em>
+      runbooks, paste them into the prompt, and let the LLM reason
+      over them. Cheap, fast, and the runbooks can change without
+      retraining anything.</p>
+
+    <div class="analogy">
+      <p class="label">If you know full-text search</p>
+      <p>RAG is "search-then-prompt". Imagine if every time a customer
+        opened a support chat, you ran a search over your wiki, took
+        the top 3 hits, and pasted them into the bot's prompt as
+        context. That's RAG. The wrinkle is <em>how</em> you do the
+        search — keyword? Semantic similarity? Hybrid? — and that's
+        where all the technique lives.</p>
+    </div>
+
+    <h2>The two retrieval techniques (and why we use both)</h2>
+
+    <h3>Technique 1 — BM25 (keyword search)</h3>
+
+    <p>BM25 is a classic lexical search algorithm — the one
+      ElasticSearch and OpenSearch use by default. It scores a
+      document by how often the <em>exact query terms</em> appear in
+      it, weighted by how rare those terms are across the whole
+      corpus.</p>
+
+    <p>Query: <code>"appointment reschedule request"</code></p>
+    <p>BM25 finds the runbook whose title is literally "Appointment
+      reschedule request" because all three query words appear in the
+      runbook text. Lexical match. Fast. Predictable. Works great when
+      the user uses the same words as the docs.</p>
+
+    <h3>Technique 2 — Dense (semantic) search via embeddings</h3>
+
+    <p>An <strong>embedding</strong> is a fixed-length vector of
+      numbers that represents the <em>meaning</em> of a piece of text.
+      Two pieces of text that mean similar things end up with similar
+      vectors, even if they don't share any words.</p>
+
+    <div class="example"><span class="label">Conceptually</span>"my circuit is dead"        → [0.21, -0.14, 0.88, ..., 0.31]
+"the link is unreachable"   → [0.19, -0.12, 0.85, ..., 0.33]
+"order pizza"               → [-0.41, 0.62, -0.18, ..., 0.04]
+
+The first two vectors are CLOSE (cosine similarity ~0.97).
+The third is FAR (cosine similarity ~0.05).</div>
+
+    <p>Dense search works by computing the embedding of your query and
+      finding the documents whose embeddings are closest to it. Works
+      great when the user phrases things differently from the docs —
+      "my circuit is dead" still matches a runbook titled "Partner-reported
+      circuit outage" because both vectors point in similar directions
+      in meaning-space.</p>
+
+    <p>Where do embeddings come from? An <em>embedding model</em>. Real
+      production deployments use <code>nomic-embed-text</code>,
+      <code>voyage-3</code>, or <code>text-embedding-3-small</code>.
+      <strong>Our demo uses a deterministic hashing embedder</strong>
+      (FNV-1a feature hashing) so the demo runs offline and the eval
+      suite is reproducible — production swaps one function and the
+      rest of the plumbing stays identical.</p>
+
+    <div class="bridge">
+      <p class="label">If you know OpenSearch</p>
+      <p>OpenSearch supports both — its classic <code>match</code>
+        query is BM25, and its <code>knn</code> query is dense vector
+        search. Modern stacks blend them ("hybrid search") because
+        each catches what the other misses. We do the same thing in
+        Python with FAISS for the dense index and a hand-rolled BM25
+        — but the architectural pattern is identical to what you'd
+        deploy on OpenSearch in production.</p>
+    </div>
+
+    <h3>Hybrid retrieval (what we actually use)</h3>
+
+    <p>Why pick one when you can blend them?</p>
+
+    <ol>
+      <li>Run both BM25 and dense over the corpus.</li>
+      <li>Normalise each set of scores to [0, 1] (min-max).</li>
+      <li>Blend with a weight: <code>alpha · dense + (1 - alpha) · bm25</code>.</li>
+      <li>Sort by the blended score. Take top-k.</li>
+    </ol>
+
+    <p>With <code>alpha = 0.5</code>, both signals weigh equally. With
+      <code>alpha = 1.0</code>, it's dense-only. With <code>alpha =
+      0.0</code>, it's BM25-only. You can tune per use case.</p>
+
+    <p>Our F4 Knowledge agent uses hybrid retrieval with <code>alpha =
+      0.5</code> over the runbook corpus. It returns:</p>
+
+    <div class="example"><span class="label">F4 output</span>{
+  "top_runbook": {
+    "runbook_id": "RB-001",
+    "title": "Partner-reported circuit outage"
+  },
+  "citation": "RB-001",        # auditable — every suggestion cited
+  "confidence": 0.494,
+  "suggested_steps": [
+    "Confirm circuit status in inventory",
+    "Run a latency probe; escalate to NOC if probe fails > 5 minutes",
+    "Notify partner with status update once probe result is known"
+  ]
+}</div>
+
+    <h2>The "rerank" step (and why it matters)</h2>
+
+    <p>Top-k retrieval gives you the rough candidates. But the
+      <em>ordering</em> within those candidates may not be perfect.
+      A <strong>cross-encoder reranker</strong> takes the top-k and
+      re-scores each pair (query, candidate) with a more expensive
+      model that looks at them together.</p>
+
+    <p>Cheap retrieval (BM25 + dense): top 20 candidates.
+      Expensive rerank: top 3 to actually use.</p>
+
+    <p>Same idea as Google: cheap broad-index lookup gets ~thousands
+      of pages, an expensive ranking model picks the 10 you see.</p>
+
+    <h2>The full RAG flow in our F4 Knowledge agent</h2>
+
+    <div class="example"><span class="label">F4 Knowledge — simplified</span># 1. Build the query from triage + entities
+query = f"{triage.category} {triage.entities.circuits[0]}"
+
+# 2. Hybrid retrieval (BM25 + dense, blended)
+hits = long_term_memory.search(query, k=5, mode="hybrid", alpha=0.5)
+
+# 3. Cross-encoder rerank — reorder the top hits
+reranked = dispatcher.call("cross_encode_rerank", query=query, hits=hits)
+
+# 4. Confidence threshold — fall back if no high-confidence match
+if reranked[0].score < 0.20:
+    return KnowledgeOutput(
+        top_runbook=None, citation=None, confidence=0.0,
+        fallback_reason="no high-confidence match",
+    )
+
+# 5. Return the top runbook with the suggested steps from its body
+return KnowledgeOutput(
+    top_runbook=reranked[0], citation=reranked[0].runbook_id,
+    suggested_steps=_extract_steps(reranked[0]),
+    confidence=reranked[0].score,
+)</div>
+
+    <h2>The two big design choices in RAG</h2>
+
+    <h3>1. Always cite</h3>
+
+    <p>Every F4 output carries a <code>citation</code> field with the
+      runbook ID. An engineer reading the suggested steps can click
+      through to the source. No citation, no claim.</p>
+
+    <p>This is the antidote to LLM hallucination: if the model
+      summarises a runbook incorrectly, the human can verify against
+      the cited source. <strong>Without citations, RAG output is
+      indistinguishable from hallucination.</strong></p>
+
+    <h3>2. Fall back below threshold</h3>
+
+    <p>If the top hit's score is below 0.20, F4 returns
+      <code>fallback_reason="no high-confidence match"</code> rather
+      than handing the engineer a bad suggestion. This matches the
+      design doc's safety contract: <em>"return 'no high-confidence
+      match' rather than guess"</em>.</p>
+
+    <div class="misconception">
+      <p class="label">Misconception to avoid</p>
+      <p>"RAG means feeding documents to ChatGPT." That's the surface.
+        The work is in <em>retrieval quality</em> — how you chunk
+        documents, what you embed, which similarity metric, hybrid vs.
+        dense-only, rerank or not, confidence threshold. Bad retrieval
+        = LLM gets irrelevant context = output looks correct but
+        isn't. "Garbage in, fluent garbage out."</p>
+    </div>
+
+    <div class="check">
+      <p class="label">Quick check</p>
+      <p>The panel asks: "Why hybrid retrieval instead of just dense
+        embeddings?"</p>
+      <button class="reveal">Reveal</button>
+      <div class="answer">
+        Because dense and BM25 catch different things. Dense excels
+        when the query and the doc use <em>different words for the
+        same idea</em> ("my circuit is dead" vs. "partner-reported
+        outage"). BM25 excels when the query uses <em>exact terms</em>
+        from the doc (a circuit ID, a queue name, a product code).
+        Either alone has blind spots. Blending min-max-normalised
+        scores with a tunable alpha gives you both signals; for our
+        runbook corpus we use alpha=0.5. The eval suite scores F4 at
+        0.933 top-1 — a real embedder in production (Voyage,
+        nomic-embed-text) would push that toward 0.95+.
+      </div>
+    </div>
+
+  </article>
+
+  <nav class="pager">
+    <a href="04-tools.html">
+      <span class="direction">Prev · 04</span>
+      <span class="title">Tools &amp; the security primitive</span>
+    </a>
+    <a href="06-memory.html" class="right">
+      <span class="direction">Next · 06</span>
+      <span class="title">Three memory tiers</span>
+    </a>
+  </nav>
+
+  <footer class="foot">
+    <span>Concept 05 / 07</span>
+    <span><a href="https://github.com/ajayaj724/partner-ticket-agentic">repo</a></span>
+  </footer>
+
+</div>
+
+<script>
+  document.querySelectorAll('.check .reveal').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var ans = btn.parentElement.querySelector('.answer');
+      ans.classList.toggle('show');
+      btn.textContent = ans.classList.contains('show') ? 'Hide' : 'Reveal';
+    });
+  });
+</script>
+
+</body>
+</html>

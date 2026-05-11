@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>04 · Tools and the security primitive</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,300..900,0..100,0..1;1,9..144,300..900,0..100,0..1&family=IBM+Plex+Sans:ital,wght@0,300..700;1,400&family=IBM+Plex+Mono:ital,wght@0,400;0,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+<div class="shell">
+
+  <nav class="topnav">
+    <span class="crumb"><a href="index.html">Concepts</a> / <b>04</b></span>
+    <span><a href="../demo-guide.html">Demo</a> · <a href="../learn.html">Learn</a></span>
+  </nav>
+
+  <header class="hero">
+    <p class="label">Concept 04 of 07</p>
+    <h1>Tools &amp; the <em>security</em> primitive</h1>
+    <p class="deck">
+      An agent's "tools" are the functions it can call to fetch data or
+      take action in the outside world. Tools are also the
+      <strong>security boundary</strong> of an agentic system. Get this
+      one right and a lot of safety follows.
+    </p>
+  </header>
+
+  <article>
+
+    <h2>What "tool" means in our world</h2>
+
+    <p>A <strong>tool</strong> is a regular Python function — typed
+      inputs, typed outputs — that an agent can invoke during its run.
+      Examples from our project:</p>
+
+    <ul>
+      <li><code>crm_lookup_partner(partner_id) → PartnerProfile</code></li>
+      <li><code>inventory_lookup_circuit(circuit_id) → CircuitState</code></li>
+      <li><code>ticket_history_recent(partner_id, n=5) → list[Ticket]</code></li>
+      <li><code>runbook_search(query) → list[RunbookHit]</code></li>
+      <li><code>notify_oncall(ticket_id, queue, idempotency_key, message)</code></li>
+    </ul>
+
+    <p>From the LLM's perspective, a tool is a structured action it can
+      ask the runtime to perform on its behalf. The runtime (our Python
+      code) actually executes the function and returns the result back
+      to the LLM — or in our case, to the agent that wraps the LLM.</p>
+
+    <div class="analogy">
+      <p class="label">If you know REST APIs</p>
+      <p>Think of an agent as a service that calls downstream APIs.
+        Each "tool" is a downstream endpoint. The difference is that an
+        agent <em>decides which endpoints to call</em> based on its
+        input — like a Quarkus Lambda that conditionally calls system
+        A, B, or C depending on the request. Tools are the agent's
+        downstream surface.</p>
+    </div>
+
+    <h2>Why tools are the security primitive</h2>
+
+    <p>Without tools, an LLM is sandboxed — it can only produce text. The
+      worst it can do is say something wrong.</p>
+
+    <p>With tools, the LLM can reach into your systems. Read a partner's
+      data. Send an email. Cancel an appointment. The instant you wire
+      up tools, you've moved from "LLM as text generator" to "LLM as
+      actor". Now the question becomes: <em>what's it allowed to do?</em></p>
+
+    <p>Our answer: <strong>each agent has a per-agent allow-list of
+      tools, enforced in code as a typed exception, not a convention</strong>.</p>
+
+    <h3>What that looks like</h3>
+
+    <div class="example"><span class="label">F2 Enricher's allow-list</span># In agents/enricher.py
+ALLOW = ToolAllowList.of(
+    "enricher",
+    "crm_lookup_partner",
+    "inventory_lookup_circuit",
+    "ticket_history_recent",
+    "runbook_search",
+)
+
+dispatcher = ToolDispatcher(allow_list=ALLOW)
+
+# F2 calls only those four. Anything else raises:
+try:
+    dispatcher.call("notify_oncall", ...)  # F2 doesn't have this
+except ToolNotAllowedError:
+    # Caught at the boundary. Audit log entry. Hard-fail.
+    ...</div>
+
+    <p>If F2 ever tried to call <code>notify_oncall</code> (an F8 tool),
+      <code>ToolNotAllowedError</code> is raised — a typed exception
+      that bubbles up the stack with the agent name, the tool name, and
+      the actual allowed list. The audit log captures it. The pipeline
+      stops.</p>
+
+    <div class="bridge">
+      <p class="label">If you know AWS IAM</p>
+      <p>Per-agent tool allow-listing is the LLM equivalent of an IAM
+        role policy. Each agent has an IAM role; each tool is an
+        Action. An agent can only invoke actions inside its policy.
+        ToolNotAllowedError is the equivalent of <code>AccessDeniedException</code>
+        — and just like IAM, the safest default is <em>deny by
+        default, allow explicitly</em>.</p>
+    </div>
+
+    <h2>Two other tool-design choices that matter</h2>
+
+    <h3>1. Idempotency keys on side-effecting tools</h3>
+
+    <p>Most tools just read — looking up a partner, fetching a runbook.
+      Reading is naturally idempotent (you can do it twice without
+      side effects).</p>
+
+    <p>Some tools <em>do things</em> — <code>notify_oncall</code> sends
+      a Slack message; <code>escalate_to_manager</code> opens an
+      incident. If F8 Watchdog scans every 5 minutes and a ticket is
+      at risk for 30 minutes, we'd notify on-call 6 times — once per
+      scan. That's spammy and irresponsible.</p>
+
+    <p>Fix: every side-effecting tool takes an <strong>idempotency
+      key</strong> as a required argument. Re-calling with the same
+      key returns <code>deduplicated=True</code> without firing the
+      side effect:</p>
+
+    <div class="example"><span class="label">Idempotency in tools/oncall.py</span>@register_tool("notify_oncall", description="...")
+def notify_oncall(*, ticket_id, queue, idempotency_key, message):
+    if idempotency_key in _Idempotency.seen:
+        # We already sent this. Don't spam.
+        return NotificationResult(
+            ticket_id=ticket_id, channel=f"oncall:{queue}",
+            delivered=False, deduplicated=True, ...
+        )
+    _Idempotency.seen.add(idempotency_key)
+    # ... actually fire the notification
+    return NotificationResult(... delivered=True ...)</div>
+
+    <p>F8 uses a stable key like <code>f"breach-watch:{ticket_id}"</code>
+      so all 6 scans share the same key — only the first one fires.</p>
+
+    <div class="analogy">
+      <p class="label">If you know Stripe</p>
+      <p>This is exactly Stripe's <code>Idempotency-Key</code> header.
+        Same pattern, different domain. Stripe uses it so a payment
+        retry doesn't charge the customer twice; we use it so a
+        watchdog retry doesn't spam on-call twice.</p>
+    </div>
+
+    <h3>2. Retry with backoff + circuit breaker</h3>
+
+    <p>Tools call downstream systems. Downstream systems fail
+      transiently. Our <code>ToolDispatcher</code> wraps every call
+      with:</p>
+
+    <ul>
+      <li><strong>Retry with exponential backoff</strong> — up to <code>max_retries</code> attempts, with delays of 50ms, 100ms, 200ms.</li>
+      <li><strong>Circuit breaker</strong> — if a tool fails N times in a row, the breaker opens; subsequent calls fast-fail without invoking the tool. After a cooldown, one probe attempt determines whether the breaker closes or stays open.</li>
+    </ul>
+
+    <p>This is a classic infrastructure pattern (Hystrix from Netflix,
+      Resilience4j on the JVM). The point is to <em>fail fast</em>
+      when a dependency is down rather than hammering it with retries.</p>
+
+    <h2>Surfacing tools via MCP</h2>
+
+    <p>MCP is the <strong>Model Context Protocol</strong> — Anthropic's
+      open standard for exposing tools to LLM clients. Released 2024,
+      widely adopted by 2026.</p>
+
+    <p>Our entire tool registry can be served as an MCP server with one
+      command:</p>
+
+    <div class="example"><span class="label">Run it</span>$ python -m partner_ticket_agentic --mcp
+Booting MCP server on stdio (Ctrl-C to stop)</div>
+
+    <p>Once running, any MCP-aware client — Claude Desktop, the
+      <code>mcp</code> CLI, another agent in another project — can
+      discover and invoke our tools over the protocol. This is the
+      slide 13 commitment in the deck: <em>"surfaced via MCP for reuse
+      across agents"</em>.</p>
+
+    <div class="bridge">
+      <p class="label">Why panels care about MCP</p>
+      <p>MCP is the 2026 industry signal. If your agentic system can't
+        speak MCP, it's a closed silo — only your own agents can use
+        your tools. If it can speak MCP, it's interoperable with the
+        broader ecosystem. Saying "we surface the tool registry via
+        MCP" tells the panel you follow industry standards, not just
+        bespoke conventions.</p>
+    </div>
+
+    <h2>The four tool-design properties to remember</h2>
+
+    <ol>
+      <li><strong>Typed I/O.</strong> Inputs and outputs are Pydantic
+        models. The dispatcher rejects misshapen calls.</li>
+      <li><strong>Per-agent allow-list.</strong> Each agent declares
+        its tool surface explicitly. <code>ToolNotAllowedError</code>
+        is a typed gate, not a convention.</li>
+      <li><strong>Idempotent or idempotency-keyed.</strong> Read-only
+        tools are naturally idempotent; side-effecting tools take an
+        idempotency key so retries are safe.</li>
+      <li><strong>Retry + circuit-breaker</strong> at the dispatcher
+        level. Tools don't worry about retry logic; the runtime
+        handles it.</li>
+    </ol>
+
+    <div class="misconception">
+      <p class="label">Misconception to avoid</p>
+      <p>"The LLM decides which tools to call." In our system the LLM
+        decides <em>what to write</em>; the agent (Python code) decides
+        which tools to call. The allow-list isn't enforced on the
+        LLM — it's enforced on the agent's dispatcher. The LLM can't
+        reach a tool that isn't in the allow-list because it can't
+        call any tool directly; only the agent's Python code can.</p>
+    </div>
+
+    <div class="check">
+      <p class="label">Quick check</p>
+      <p>The panel asks: "What happens if F2 Enricher's
+        <code>crm_lookup_partner</code> tool calls a downstream that's
+        timing out 50% of the time?"</p>
+      <button class="reveal">Reveal</button>
+      <div class="answer">
+        Three things in sequence. (1) <strong>Retry with exponential
+        backoff</strong> at the dispatcher — first attempt fails, second
+        try after 50ms, third after 100ms. (2) If retries exhaust,
+        the tool raises <code>ToolError</code> and that section of
+        F2's enrichment lands in <code>unavailable=["crm"]</code>; the
+        engineer sees what was missing rather than a partial picture.
+        (3) After enough consecutive failures the
+        <strong>circuit breaker opens</strong> — subsequent calls
+        fast-fail without touching the downstream, giving it room to
+        recover. Production-grade behaviour without the agent code
+        knowing any of this — the dispatcher handles it.
+      </div>
+    </div>
+
+  </article>
+
+  <nav class="pager">
+    <a href="03-orchestration.html">
+      <span class="direction">Prev · 03</span>
+      <span class="title">Multi-agent orchestration</span>
+    </a>
+    <a href="05-rag.html" class="right">
+      <span class="direction">Next · 05</span>
+      <span class="title">RAG &amp; retrieval</span>
+    </a>
+  </nav>
+
+  <footer class="foot">
+    <span>Concept 04 / 07</span>
+    <span><a href="https://github.com/ajayaj724/partner-ticket-agentic">repo</a></span>
+  </footer>
+
+</div>
+
+<script>
+  document.querySelectorAll('.check .reveal').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var ans = btn.parentElement.querySelector('.answer');
+      ans.classList.toggle('show');
+      btn.textContent = ans.classList.contains('show') ? 'Hide' : 'Reveal';
+    });
+  });
+</script>
+
+</body>
+</html>

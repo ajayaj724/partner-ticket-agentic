@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>03 · Multi-agent orchestration</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,300..900,0..100,0..1;1,9..144,300..900,0..100,0..1&family=IBM+Plex+Sans:ital,wght@0,300..700;1,400&family=IBM+Plex+Mono:ital,wght@0,400;0,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+<div class="shell">
+
+  <nav class="topnav">
+    <span class="crumb"><a href="index.html">Concepts</a> / <b>03</b></span>
+    <span><a href="../demo-guide.html">Demo</a> · <a href="../learn.html">Learn</a></span>
+  </nav>
+
+  <header class="hero">
+    <p class="label">Concept 03 of 07</p>
+    <h1>Multi-agent <em>orchestration</em></h1>
+    <p class="deck">
+      Eight agents are nice, but who decides which one runs when? That's
+      orchestration. We use <strong>LangGraph</strong> — a state machine
+      designed for LLM workflows. Here's what it does and why it beats
+      the alternatives.
+    </p>
+  </header>
+
+  <article>
+
+    <h2>The problem orchestration solves</h2>
+
+    <p>You have 8 agents. A new ticket arrives. Questions to answer:</p>
+    <ul>
+      <li>Which agent runs first?</li>
+      <li>Can two agents run in parallel?</li>
+      <li>What state does each agent see?</li>
+      <li>What happens if one fails — does the pipeline stop?</li>
+      <li>How do we trace a single ticket from start to finish?</li>
+    </ul>
+
+    <p>You could answer all of this with a giant <code>main.py</code> full
+      of <code>if/else</code> and threading code. Many teams do. It's
+      called "vibe orchestration" and it's a nightmare to debug.</p>
+
+    <p>An orchestration framework lets you <strong>describe</strong> the
+      topology declaratively, then it handles the threading,
+      checkpointing, and tracing for you.</p>
+
+    <div class="analogy">
+      <p class="label">If you know AWS Step Functions</p>
+      <p>LangGraph is to Python what Step Functions is to AWS Lambdas.
+        You describe states (= agents in our case) and edges (= transitions)
+        in a graph, and the runtime executes them in order, in parallel where
+        you say so, with built-in retry and observability. The
+        domain is different (in-process Python vs. cloud-orchestrated
+        Lambdas), but the architectural shape is the same — a declarative
+        DAG you can read and reason about.</p>
+    </div>
+
+    <h2>What LangGraph actually is</h2>
+
+    <p><strong>LangGraph is a Python library for building stateful,
+      multi-step computational graphs.</strong> Think of it as
+      networkx + threading + JSON-Schema validation, designed
+      specifically for LLM-powered workflows.</p>
+
+    <p>You build a <code>StateGraph</code>:</p>
+
+    <div class="example"><span class="label">Simplified version of our graph.py</span>graph = StateGraph(TicketState)
+
+# Register each agent as a node
+graph.add_node("triage", triage_node)
+graph.add_node("linker", linker_node)
+graph.add_node("enricher", enricher_node)
+graph.add_node("router", router_node)
+graph.add_node("knowledge", knowledge_node)
+graph.add_node("scheduler", scheduler_node)
+graph.add_node("drafter", drafter_node)
+
+# Wire the topology — parallel fan-out from START
+graph.add_edge(START, "triage")
+graph.add_edge(START, "linker")
+
+# Both join at the Enricher (LangGraph waits for both)
+graph.add_edge("triage", "enricher")
+graph.add_edge("linker", "enricher")
+
+# Enricher fans out to Router and Knowledge
+graph.add_edge("enricher", "router")
+graph.add_edge("enricher", "knowledge")
+
+# Conditional: scheduler only fires for on-site categories
+graph.add_conditional_edges(
+    "route_decision", _route_decision,
+    {"scheduler": "scheduler", "drafter": "drafter"},
+)
+
+graph.add_edge("drafter", END)
+runnable = graph.compile()
+
+# Run it
+result = runnable.invoke(initial_state)</div>
+
+    <p>The graph is <strong>declarative</strong>. Look at the edges, and
+      you can read the topology without running anything. Look at the
+      conditional, and you know exactly what decides between scheduler
+      and drafter.</p>
+
+    <h2>The three things LangGraph gives you</h2>
+
+    <h3>1. Parallel fan-out and join, free</h3>
+
+    <p>When two edges leave the same node and rejoin somewhere downstream,
+      LangGraph runs them in parallel and waits for both before
+      continuing.</p>
+
+    <p>In our project, F1 Triage and F7 Linker fan out from START, both
+      join at F2 Enricher. F2 fans out to F3 Router and F4 Knowledge,
+      both join at the route-decision node. We didn't write a single
+      <code>Thread()</code> or <code>asyncio.gather()</code>. LangGraph
+      handles it.</p>
+
+    <h3>2. Conditional routing</h3>
+
+    <p><code>add_conditional_edges</code> takes a function that returns
+      a string, and a mapping of returned strings to next nodes. Our
+      <code>_route_decision</code> looks at the triage category and
+      returns either <code>"scheduler"</code> or <code>"drafter"</code>.</p>
+
+    <p>That's how F6 Scheduler runs only for on-site-eligible tickets
+      (appointment_request, provisioning, on-site circuit_down) and
+      gets skipped otherwise.</p>
+
+    <h3>3. A typed state object that's passed between nodes</h3>
+
+    <p>Each agent's output gets merged into a single
+      <code>TicketState</code> object. The next agent reads whatever it
+      needs from there. No globals, no side-channel data, no "wait, did
+      this field get set?".</p>
+
+    <div class="example"><span class="label">TicketState (simplified)</span>class TicketState(BaseModel):
+    ticket_id: str
+    partner_id: str
+    subject: str
+    description: str
+
+    # Per-agent output slots (populated as the graph runs)
+    triage: dict | None = None
+    enrichment: dict | None = None
+    routing: dict | None = None
+    knowledge: dict | None = None
+    related: dict | None = None       # from F7 Linker
+    schedule: dict | None = None      # from F6 Scheduler
+    draft: dict | None = None         # from F5 Drafter
+
+    # Cross-cutting telemetry
+    trace_id: str
+    cost: dict | None = None
+    pii_findings: list[dict] = []</div>
+
+    <h2>The two big architectural commitments</h2>
+
+    <p>Working with LangGraph forces you to commit to two principles
+      that turn out to be the right ones anyway:</p>
+
+    <h3>The graph decides routing, the LLM decides content</h3>
+
+    <p>This is the single most important sentence in the whole project.
+      Memorise it.</p>
+
+    <p>Why? Because LLMs are good at <em>generating content for a
+      specific structured task</em>, but bad at <em>deciding what to do
+      next</em>. If you let an LLM decide whether to call F6 Scheduler
+      or skip it, the LLM might forget halfway through, or invent a
+      step that doesn't exist, or call F6 twice. The graph doesn't
+      forget anything. The graph is just code.</p>
+
+    <p>So the graph (deterministic Python) decides which agent runs
+      when. The LLM (inside each agent) decides what to write. Clean
+      split of responsibility.</p>
+
+    <h3>State is explicit, not ambient</h3>
+
+    <p>Every node reads from and writes to the <code>TicketState</code>
+      object. There's no "what's the current ticket?" implicit context
+      stored in a global. The state is the truth.</p>
+
+    <p>This means you can serialise the state, store it, replay it,
+      diff it. That's the foundation of the audit trail and the
+      "replay-from-trace" capability the design doc names.</p>
+
+    <div class="bridge">
+      <p class="label">For the panel</p>
+      <p>When the panel asks "why LangGraph over Semantic Kernel or
+        OpenAI Assistants?", the answer is:</p>
+      <p>(1) Graph-based orchestration with <em>deterministic
+        tool-call control</em> — we decide routing, not the LLM.
+        (2) Built-in state checkpointing for crash recovery in production.
+        (3) Mature observability hooks. (4) Python ecosystem is strongest
+        for retrieval and eval. <strong>Semantic Kernel</strong> is
+        native to the Microsoft estate but less idiomatic outside .NET.
+        <strong>OpenAI Assistants / Bedrock Agents</strong> are managed
+        runtimes — tighter vendor coupling, weaker control over tool-call
+        policy.</p>
+    </div>
+
+    <h2>What about the alternatives?</h2>
+
+    <p>Two questions the panel might ask:</p>
+
+    <h3>"Why not write the orchestration yourself in plain Python?"</h3>
+
+    <p>You could. ThreadPoolExecutor + a dict + some if/else. You'd
+      reinvent: parallel join semantics, conditional routing, state
+      merging, error propagation, checkpointing, retries, span tracing.
+      And every team would reinvent them slightly differently. A library
+      means the team's mental model maps to library terminology, which
+      means faster onboarding and fewer surprises.</p>
+
+    <h3>"Why not use Semantic Kernel or LlamaIndex Workflows?"</h3>
+
+    <p>Both are reasonable. We picked LangGraph because:</p>
+    <ul>
+      <li>Its graph model is <strong>explicit</strong> (you write edges; you
+        don't infer them from decorators or class hierarchies)</li>
+      <li>It has <strong>checkpointing</strong> built in — pause and resume
+        a graph mid-execution after a crash</li>
+      <li>The Python ecosystem around it (LangSmith for evals, LangChain
+        for retrieval primitives) is the broadest</li>
+      <li>The 1.x stable release happened in 2025 — mature enough to
+        defend in production</li>
+    </ul>
+
+    <div class="misconception">
+      <p class="label">Misconception to avoid</p>
+      <p>"LangChain and LangGraph are the same thing." They're related
+        but distinct. <strong>LangChain</strong> is a toolbox of
+        building blocks (LLM wrappers, retrievers, parsers).
+        <strong>LangGraph</strong> is a state-machine engine for
+        composing those blocks into workflows. We use a tiny slice
+        of LangChain (just <code>BaseModel</code> via Pydantic
+        underneath) and most of LangGraph.</p>
+    </div>
+
+    <div class="check">
+      <p class="label">Quick check</p>
+      <p>Look at our graph topology. Why does F1 Triage run in parallel
+        with F7 Linker, but F3 Router and F4 Knowledge run AFTER F2
+        Enricher?</p>
+      <button class="reveal">Reveal</button>
+      <div class="answer">
+        Because of <strong>data dependency</strong>. F1 Triage classifies
+        the ticket; F7 Linker searches for duplicate tickets. Neither
+        depends on the other's output — they only need the raw ticket.
+        So they run in parallel. F3 Router and F4 Knowledge both need
+        the enriched context (partner profile, recent tickets, runbooks)
+        that F2 produces — so they wait for F2. Parallel where independent,
+        sequential where dependent. The topology is a literal map of
+        the data-dependency graph.
+      </div>
+    </div>
+
+  </article>
+
+  <nav class="pager">
+    <a href="02-agent.html">
+      <span class="direction">Prev · 02</span>
+      <span class="title">What is an "agent"?</span>
+    </a>
+    <a href="04-tools.html" class="right">
+      <span class="direction">Next · 04</span>
+      <span class="title">Tools &amp; the security primitive</span>
+    </a>
+  </nav>
+
+  <footer class="foot">
+    <span>Concept 03 / 07</span>
+    <span><a href="https://github.com/ajayaj724/partner-ticket-agentic">repo</a></span>
+  </footer>
+
+</div>
+
+<script>
+  document.querySelectorAll('.check .reveal').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var ans = btn.parentElement.querySelector('.answer');
+      ans.classList.toggle('show');
+      btn.textContent = ans.classList.contains('show') ? 'Hide' : 'Reveal';
+    });
+  });
+</script>
+
+</body>
+</html>
