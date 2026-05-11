@@ -24,12 +24,16 @@ allow-list enforced in code.
 ## Why this exists
 
 The shipped partner-ticketing platform handled CRUD on operational
-tickets and field appointments for partner organisations of a Belgian
-telecom operator. AI-driven automation was on the product roadmap as the
-next phase. This repo implements that next phase as a deployable agentic
-platform — small enough to clone and run in three minutes, complete
-enough that an architect can read the topology and predict its behaviour
-without running it.
+tickets and field appointments between a Belgian telecom operator and
+its upstream fiber-installation partners — the platform sat on the
+operator side and let ops file tickets with partners when monitoring
+or customer reports surfaced a fiber-line issue, then coordinated the
+partner-side technician appointments that resolved it. AI-driven
+automation was on the product roadmap as the next phase. This repo
+implements that next phase as a deployable agentic platform — small
+enough to clone and run in three minutes, complete enough that an
+architect can read the topology and predict its behaviour without
+running it.
 
 It is also a panel deliverable: the commit log, the test suite, the eval
 outputs, and this README are all part of the artefact.

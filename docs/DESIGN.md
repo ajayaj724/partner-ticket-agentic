@@ -9,7 +9,7 @@
 
 ## 1. Context
 
-The shipped partner-ticketing platform handles operational tickets (CRUD) and field appointments (book / modify / cancel) for partner organisations of a Belgian telecom operator. AI-driven automation was on the product roadmap as the next phase. This document defines that next phase as a deployable agentic platform.
+The shipped partner-ticketing platform handles operational tickets (CRUD) and field appointments (book / modify / cancel) between a Belgian telecom operator and its upstream fiber-installation partners — sitting on the operator side, letting ops file tickets with partners when monitoring or customer reports surface a fiber-line issue and coordinating the partner-side field-technician appointments that resolve it. AI-driven automation was on the product roadmap as the next phase. This document defines that next phase as a deployable agentic platform.
 
 The goal of the platform is to reduce time-to-resolution and engineer toil by automating the repetitive judgement work — triage, enrichment, routing, drafting — while keeping humans in the loop on outbound communication and irreversible actions.
 

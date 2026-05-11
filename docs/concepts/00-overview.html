@@ -32,9 +32,10 @@
     <h2>The shortest possible version</h2>
 
     <p>The application is a <strong>partner-ticketing platform for a
-      Belgian telecom</strong>, redesigned so that <strong>AI agents do
-      the boring judgement work</strong> that humans used to do — and a
-      human still approves anything that gets sent to the partner.</p>
+      Belgian telecom and its upstream fiber-installation partners</strong>,
+      redesigned so that <strong>AI agents do the boring judgement
+      work</strong> that humans used to do — and a human still approves
+      anything that gets sent to the partner.</p>
 
     <p>It's an open-source MIT-licensed reference implementation. It
       runs offline on a deterministic mock LLM (no API key needed).
@@ -45,23 +46,30 @@
 
     <h3>Before (the shipped project)</h3>
 
-    <p>A web app + APIs for partner companies — small telcos like
-      <em>BrusselsNet</em>, <em>Antwerp Cable</em>, <em>Liège Fibre</em>
-      — to file support tickets against the parent telecom. CRUD
-      operations on tickets, plus field-appointment management.</p>
+    <p>A web app + APIs for the telecom's operations team to file
+      tickets <em>with</em> its upstream fiber-installation partners —
+      organisations like <em>BrusselsNet</em>, <em>Antwerp Cable</em>,
+      <em>Liège Fibre</em> — when monitoring or customer reports
+      surfaced a fiber-line issue, and to coordinate the partner-side
+      field-technician appointments that resolve it. CRUD on tickets
+      + appointment management.</p>
 
-    <p>The flow: partner files a ticket → ticket lands in a queue →
-      <strong>human triages it, looks up context, picks a queue,
-      finds the runbook, drafts a reply, sends it</strong>. The
-      shipped project did the data plumbing for all of that. AI was on
-      the roadmap as a "next phase" but never got built.</p>
+    <p>The flow: issue detected → ops files a ticket with the partner →
+      <strong>a human on our side triages it, looks up context, picks
+      the right partner-facing owner, finds the runbook, drafts the
+      outbound message, sends it</strong> → partner schedules a
+      technician → technician fixes the issue on-site → ticket closes.
+      The shipped project did the data plumbing for all of that. AI was
+      on the roadmap as a "next phase" but never got built.</p>
 
     <h3>After (this redesign)</h3>
 
-    <p>Same partner experience from the outside. Inside, the boring
-      judgement work is now done by 8 specialist AI agents. The
-      human only steps in at the end — to approve, edit, or reject
-      the outgoing message.</p>
+    <p>Same domain shape from the outside — operations files a ticket,
+      a partner technician eventually shows up and fixes it. Inside,
+      the boring judgement work (triage, routing, runbook lookup,
+      drafting) is now done by 8 specialist AI agents. The human only
+      steps in at the end — to approve, edit, or reject the outgoing
+      message to the partner.</p>
 
     <div class="analogy">
       <p class="label">If you know a hospital emergency room</p>
@@ -85,7 +93,7 @@
 4.  F3 Router     queue=NOC-L2, assignee=u-noc-001, SLA=30 min
 5.  F4 Knowledge  "runbook RB-001 is most relevant — here are 3 steps"
 6.  F6 Scheduler  3 proposed appointment slots, ranked by score (if on-site)
-7.  F5 Drafter    drafts the partner-facing email, requires_approval=true
+7.  F5 Drafter    drafts the message to the partner, requires_approval=true
 8.  HITL          human clicks Approve / Edit / Reject
 
 (separate)
@@ -233,7 +241,7 @@ $ python -m partner_ticket_agentic --web
         Nothing in this codebase trains anything.</li>
       <li><strong>It's not domain-bound to telecom.</strong> The 8
         agents would work just as well for IT help-desk, insurance
-        claims triage, or any partner-facing ticketing flow. Telecom
+        claims triage, or any B2B field-service ticketing flow. Telecom
         is the worked example.</li>
       <li><strong>It's not the production-ready version.</strong>
         It's the architectural skeleton with honest scoping. Things
