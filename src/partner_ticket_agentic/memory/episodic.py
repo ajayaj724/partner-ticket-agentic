@@ -13,6 +13,7 @@ abstraction tax for no benefit at this scale.
 
 from __future__ import annotations
 
+import contextlib
 import sqlite3
 import weakref
 from dataclasses import dataclass
@@ -82,10 +83,8 @@ class EpisodicStore:
 
     def close(self) -> None:
         self._finalizer.detach()
-        try:
+        with contextlib.suppress(sqlite3.ProgrammingError):
             self._conn.close()
-        except sqlite3.ProgrammingError:
-            pass  # already closed
 
     def __enter__(self) -> EpisodicStore:
         return self
@@ -149,10 +148,8 @@ class EpisodicStore:
 def _safe_close(conn: sqlite3.Connection) -> None:
     """Close a SQLite connection, swallowing ProgrammingError on double-close."""
 
-    try:
+    with contextlib.suppress(sqlite3.ProgrammingError):
         conn.close()
-    except sqlite3.ProgrammingError:
-        pass
 
 
 def _row_to_entry(row: sqlite3.Row) -> EpisodicEntry:
