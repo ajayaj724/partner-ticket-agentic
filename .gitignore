@@ -61,3 +61,24 @@ Presentation/*_v[0-9].pptx
 docs/demo-guide.html
 docs/DEMO-GUIDE.md
 docs/learn.html
+docs/present.html
+docs/interview.html
+docs/langgraph-101.html
+docs/pydantic-101.html
+docs/rag-101.html
+docs/panel-deck.html
+docs/panel-deck-assets/
+docs/panel-mock-interview.html
+
+# Personal panel-prep artefacts (mail attachments, screenshots) — keep local
+mail/
+.playwright-mcp/
+
+# Next.js frontend build artifacts (sources tracked, generated files not)
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/next-env.d.ts
+frontend/.env*.local
+frontend/.vercel
+frontend/*.tsbuildinfo
