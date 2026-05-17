@@ -168,6 +168,36 @@ def _score_runbooks(rows: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _score_insights(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    from partner_ticket_agentic.agents.insights import (
+        InsightsOutput,
+        WindowSummary,
+        run_insights,
+    )
+    from partner_ticket_agentic.providers import MockProvider
+
+    provider = MockProvider()
+    kind_hits = 0
+    severity_hits = 0
+    for row in rows:
+        window = WindowSummary.model_validate(row["window"])
+        output: InsightsOutput = run_insights(window, provider)
+        actual_kinds = {ins.kind for ins in output.insights}
+        actual_severities = {ins.severity for ins in output.insights}
+        expected_kinds = set(row.get("expected_kinds", []))
+        expected_sev_any = set(row.get("expected_severities_any_of", []))
+        if expected_kinds.issubset(actual_kinds):
+            kind_hits += 1
+        if not expected_sev_any or (actual_severities & expected_sev_any):
+            severity_hits += 1
+    n = len(rows)
+    return {
+        "n": n,
+        "kind_accuracy": kind_hits / n if n else 0.0,
+        "severity_accuracy": severity_hits / n if n else 0.0,
+    }
+
+
 def _score_breach(rows: list[dict[str, Any]]) -> dict[str, Any]:
     from partner_ticket_agentic.agents.watchdog import _band, _rule_risk
     from partner_ticket_agentic.tools.open_tickets import AS_OF_REFERENCE, OpenTicket
@@ -223,6 +253,7 @@ def main() -> int:
         "F7 Linker": (evals_root / "duplicate_pairs.jsonl", _score_duplicates),
         "F4 Knowledge": (evals_root / "runbook_relevance.jsonl", _score_runbooks),
         "F8 Watchdog": (evals_root / "breach_replay.jsonl", _score_breach),
+        "F9 Insights": (evals_root / "insights.jsonl", _score_insights),
     }
 
     print(f"Eval suite — {datetime.now(UTC).isoformat(timespec='seconds')}Z")
@@ -246,6 +277,7 @@ def main() -> int:
                     "queue_accuracy",
                     "top1_accuracy",
                     "band_accuracy",
+                    "kind_accuracy",
                     "precision",
                 )
                 if k in result

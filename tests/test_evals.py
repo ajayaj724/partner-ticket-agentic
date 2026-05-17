@@ -16,6 +16,7 @@ from partner_ticket_agentic.evals.__main__ import (
     _load_jsonl,
     _score_breach,
     _score_duplicates,
+    _score_insights,
     _score_routing,
     _score_runbooks,
     _score_triage,
@@ -71,6 +72,14 @@ def test_duplicate_eval_returns_well_formed_metrics() -> None:
     assert 0.0 <= result["recall"] <= 1.0
 
 
+def test_insights_eval_thresholds() -> None:
+    result = _score_insights(_evals("insights.jsonl"))
+    assert result["n"] >= 6
+    # The mock rule is deterministic — expected kinds must always appear.
+    assert result["kind_accuracy"] >= 0.95
+    assert result["severity_accuracy"] >= 0.85
+
+
 def test_runner_main_prints_a_report(capsys: pytest.CaptureFixture[str]) -> None:
     rc = main()
     out = capsys.readouterr().out
@@ -80,6 +89,7 @@ def test_runner_main_prints_a_report(capsys: pytest.CaptureFixture[str]) -> None
     assert "F4 Knowledge" in out
     assert "F7 Linker" in out
     assert "F8 Watchdog" in out
+    assert "F9 Insights" in out
     assert "Procedural-agent coverage" in out
 
 
