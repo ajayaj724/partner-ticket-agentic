@@ -171,11 +171,15 @@ CLI: `--llm-provider mock|anthropic|ollama`. Falls back to mock if the chosen pr
 
 All providers implement the same `LLMProvider` interface: `complete(messages, schema, tier) -> structured_response`. Schema enforcement is the responsibility of the provider — Pydantic validation on the way out.
 
+**Prompt caching (Anthropic).** The system prompt and the verbose tool schema are marked with `cache_control={"type": "ephemeral"}` so the second call onwards reads the cached prefix at ~10% of the input rate. Cache TTL is `ephemeral` (~5 minutes). `cached_input_tokens`, `cache_write_tokens`, and `cache_hit` are surfaced in the per-call `llm_call` log record and rolled into the `CostLedger` per ticket.
+
+**MCP re-export.** The full tool registry — CRM lookup, policy table, runbook search, scheduler slots, compliance filter — is exposed via the Model Context Protocol over stdio (`--mcp`). Per-agent `ToolAllowList` is intentionally bypassed on the MCP surface (gateway / consumer-side policy is out of scope for v1).
+
 ### 4.2 Memory
 
 - **Working memory:** LangGraph state object, scoped to one ticket flow.
 - **Episodic memory:** SQLite by default (file at `~/.ptag/episodic.db`), keyed by `partner_id`. Stores recent ticket patterns, partner preferences, escalation history. Persists across runs.
-- **Long-term memory:** Two stores. (a) Vector index over runbooks (FAISS by default; opt-in to Pinecone/Weaviate). (b) Structured facts in SQLite.
+- **Long-term memory:** Hybrid retrieval over the runbook corpus. FAISS `IndexFlatIP` dense leg + pure-Python Okapi BM25 (k1=1.5, b=0.75) lexical leg, both built over the same tokeniser so a term that lands in one is visible to the other. Per-query scores are min-max normalised to `[0, 1]` and blended as `α · dense + (1 - α) · bm25` with `α = 0.5` as default. The demo embedder is a deterministic FNV-1a feature-hashing trick (`embed_text` in `memory/longterm.py`) — chosen for offline reproducibility, swapped for a real embedding model (`nomic-embed-text`, Voyage, OpenAI) in production by replacing `embed_text()` only. Structured facts continue to live in SQLite.
 
 ### 4.3 Observability
 
@@ -196,6 +200,10 @@ Every step emits a structured JSON log line:
 ```
 
 Logs are tail-able; an `--export-trace` flag dumps the full trace for a ticket to JSON for replay.
+
+**OpenTelemetry spans (opt-in).** When the `[otel]` extras are installed and `PTAG_OTEL=1`, `obs.py` emits four nested span levels — `pipeline → agent → tool → llm_call` — via `OTLPSpanExporter` to whatever endpoint `OTEL_EXPORTER_OTLP_ENDPOINT` points at (Jaeger, Tempo, Honeycomb). JSON-line logs remain the audit-of-record; OTel is the production performance-trace path. The OTel path is no-op when the extras aren't installed — no runtime cost in CI.
+
+**Tool resilience.** Every tool call goes through a typed retry policy and a per-tool three-state circuit breaker (`CLOSED → OPEN → HALF_OPEN`) in `tools/policy.py`. Defaults: `failure_threshold=5`, `cooldown_s=30`, retry only on transient errors (timeouts, 429, 503). Per-tool isolation — the CRM going down does not trip the calendar tool.
 
 ### 4.4 Eval
 

@@ -126,6 +126,28 @@ uv run python -m partner_ticket_agentic --web
 uv run python -m partner_ticket_agentic --mcp
 ```
 
+To connect from Claude Desktop, add this stanza to `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "partner-ticket-agentic": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "partner_ticket_agentic", "--mcp"],
+      "cwd": "/absolute/path/to/partner-ticket-agentic"
+    }
+  }
+}
+```
+
+The MCP surface re-exports the full tool registry — CRM lookup, policy
+table, runbook search, scheduler slots, compliance filter. **Note:** the
+per-agent `ToolAllowList` is bypassed over MCP by design
+(`mcp_server.py`). Consumer-side policy (which agent or client may call
+which tool) is out of scope for v1; production deployments add a
+gateway layer in front. Documented as a deliberate trade-off in
+`docs/AI_ACT_ASSESSMENT.md` §5.
+
 The default LLM provider is the **deterministic mock**: no network, no
 API keys, same input always yields the same output. Switch with
 `--llm-provider anthropic` (requires `ANTHROPIC_API_KEY`) or
@@ -302,6 +324,47 @@ schema-first outputs, and per-call cost telemetry. The code:
 * **Cost surface** — CLI shows a "Cost / token telemetry" block at the
   end of `--ticket-id` output; web UI shows a "Cost & token telemetry"
   card under F5 with a per-agent breakdown.
+
+---
+
+## Resilience
+
+Every tool call goes through a two-layer policy (`tools/policy.py`):
+
+* **Retry with exponential backoff** — `RetryPolicy` retries only on a
+  typed allow-list of transient errors (timeouts, 429s, 503s). 4xx-other
+  and validation errors are not retried — that would mask schema bugs.
+* **Per-tool circuit breaker** — `BreakerRegistry` holds one
+  `CircuitBreaker` per tool name. The FSM has three states
+  (`CLOSED → OPEN → HALF_OPEN`); after `failure_threshold=5`
+  consecutive failures the breaker opens for `cooldown_s=30`, then
+  probes once before closing. The CRM going down does not trip the
+  calendar tool — per-tool isolation is the point.
+
+The Ollama provider adds a single retry on Pydantic validation failure
+(`providers/ollama.py`) — local models occasionally emit invalid JSON;
+one re-prompt with the schema attached usually fixes it.
+
+---
+
+## Observability (opt-in)
+
+Two layers, both off the critical path:
+
+* **Structured JSON logs** (always on) — every agent and tool boundary
+  emits a line with `ticket_id`, `agent`, `tool`, `latency_ms`,
+  `outcome`. The `trace_id` correlates a full ticket run; grep one ID
+  and the full path comes back. Audit-of-record.
+* **OpenTelemetry spans** (opt-in via extras) — install with
+  `uv sync --extra otel`, enable with `PTAG_OTEL=1`, point at a
+  collector with `OTEL_EXPORTER_OTLP_ENDPOINT`. Four nested span levels
+  (`pipeline → agent → tool → llm_call`) make a Jaeger or Tempo
+  waterfall obvious — which tool was the long pole, where retries
+  fired, did the breaker trip mid-flow. The path is no-op when extras
+  aren't installed.
+
+`obs.py` handles both. Logs for forensics, traces for performance,
+dashboards for ambient awareness.
 
 ---
 
