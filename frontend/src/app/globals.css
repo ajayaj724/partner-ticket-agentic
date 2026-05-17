@@ -1,0 +1,288 @@
+@import "tailwindcss";
+
+/* ============================================================
+ * "Engineering Schematic" theme.
+ * Warm drafting-paper light theme — italic editorial serif
+ * display, restrained sans body, monospace for technical bits,
+ * one terracotta accent like red ink on a blueprint.
+ * Built for an audience of senior architects who respect
+ * engineering documents.
+ * ============================================================ */
+
+@theme {
+  /* Paper + ink */
+  --color-bg:           #f5f1e8;
+  --color-paper:        #fbfaf5;
+  --color-paper-deep:   #efeadb;
+  --color-ink:          #1c1b17;
+  --color-ink-soft:     #3c3a35;
+  --color-muted:        #6b6760;
+  --color-faint:        #a39e94;
+
+  /* Rule lines */
+  --color-line:         #d9d2c1;
+  --color-line-soft:    #ece7da;
+  --color-line-strong:  #8b8576;
+
+  /* One sharp accent — terracotta, like red ink on blueprints */
+  --color-accent:       #c8472b;
+  --color-accent-deep:  #93331c;
+  --color-accent-soft:  #f0d8cf;
+
+  /* Status — earthy, not candy */
+  --color-ok:           #2d5d3e;
+  --color-ok-soft:      #d2e0d4;
+  --color-warn:         #b45309;
+  --color-warn-soft:    #f5e7c4;
+  --color-danger:       #8b2a1a;
+  --color-danger-soft:  #f0d8cf;
+
+  /* Typography — one neutral sans, mono for technical strings only.
+     Hierarchy comes from weight + size, not from a decorative face. */
+  --font-display: var(--font-hanken-grotesk);
+  --font-body:    var(--font-hanken-grotesk);
+  --font-mono:    var(--font-jetbrains-mono);
+}
+
+:root { color-scheme: light; }
+
+html, body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-body), -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+  font-feature-settings: "ss01", "ss03", "cv01";
+}
+
+/* Subtle drafting-paper grid — visible only as atmosphere */
+body {
+  background-image:
+    linear-gradient(rgba(28, 27, 23, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(28, 27, 23, 0.03) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: -1px -1px;
+  background-attachment: fixed;
+}
+
+/* ============================================================ Display type
+ * Sans-serif, weight-driven hierarchy. No italics — the class names
+ * .display-italic and .bignum-italic are kept for backward-compat in
+ * the markup but render as a heavier weight, not as slanted text. */
+
+.display {
+  font-family: var(--font-display), sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+.display-italic {
+  font-family: var(--font-display), sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+/* ============================================================ Mono */
+
+.mono { font-family: var(--font-mono), monospace; }
+
+.chip {
+  display: inline-block;
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  background: var(--color-paper);
+  border: 1px solid var(--color-line);
+  color: var(--color-ink-soft);
+}
+
+/* ============================================================ Schematic frame */
+
+/* Topology box with corner brackets — like an architectural drawing */
+.schematic {
+  position: relative;
+  background:
+    /* graph-paper grid */
+    linear-gradient(rgba(28, 27, 23, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(28, 27, 23, 0.04) 1px, transparent 1px),
+    var(--color-paper);
+  background-size: 24px 24px;
+  border: 1px solid var(--color-line);
+}
+.schematic::before,
+.schematic::after,
+.schematic > .corner-tl,
+.schematic > .corner-tr,
+.schematic > .corner-bl,
+.schematic > .corner-br {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: var(--color-ink);
+  pointer-events: none;
+}
+.schematic::before { /* top-left */
+  top: -1px; left: -1px;
+  border-top: 2px solid;
+  border-left: 2px solid;
+}
+.schematic::after { /* top-right */
+  top: -1px; right: -1px;
+  border-top: 2px solid;
+  border-right: 2px solid;
+}
+.schematic > .corner-bl {
+  bottom: -1px; left: -1px;
+  border-bottom: 2px solid var(--color-ink);
+  border-left: 2px solid var(--color-ink);
+}
+.schematic > .corner-br {
+  bottom: -1px; right: -1px;
+  border-bottom: 2px solid var(--color-ink);
+  border-right: 2px solid var(--color-ink);
+}
+
+/* Dimensional callout — "FIG. 1" style label */
+.callout {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+/* Marginal note — supporting text in the right gutter */
+.margin-note {
+  font-family: var(--font-body), sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-ink-soft);
+  letter-spacing: 0;
+}
+
+/* ============================================================ Reusable surfaces */
+
+.card {
+  background: var(--color-paper);
+  border: 1px solid var(--color-line);
+}
+
+.divider {
+  border-top: 1px solid var(--color-line);
+}
+.divider-strong {
+  border-top: 2px solid var(--color-ink);
+}
+
+/* ============================================================ Big-number display */
+
+.bignum {
+  font-family: var(--font-display), sans-serif;
+  font-weight: 600;
+  font-size: clamp(48px, 6vw, 84px);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.bignum-italic {
+  font-family: var(--font-display), sans-serif;
+  font-weight: 600;
+  font-size: clamp(32px, 4vw, 56px);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================ Buttons */
+
+.btn {
+  font-family: var(--font-body), sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  padding: 10px 18px;
+  cursor: pointer;
+  transition: all 160ms cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid var(--color-ink);
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+.btn:hover:not(:disabled) {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-primary {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.btn-ghost {
+  border-color: var(--color-line);
+  background: transparent;
+}
+.btn-ghost:hover:not(:disabled) {
+  border-color: var(--color-ink);
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+.btn-accent {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+  color: var(--color-accent-deep);
+}
+.btn-accent:hover:not(:disabled) {
+  background: var(--color-accent);
+  color: var(--color-paper);
+}
+
+/* ============================================================ Pulse for active nodes */
+
+@keyframes node-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(200, 71, 43, 0.4); }
+  70%  { box-shadow: 0 0 0 10px rgba(200, 71, 43, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(200, 71, 43, 0); }
+}
+
+.pulse { animation: node-pulse 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+
+/* SVG node states — set via JS attribute `data-state`. */
+[data-state="active"] rect,
+[data-state="active"] ellipse,
+[data-state="active"] polygon {
+  fill: var(--color-accent-soft);
+  stroke: var(--color-accent);
+  stroke-width: 1.8;
+  transition: fill 220ms ease, stroke 220ms ease;
+}
+[data-state="complete"] rect,
+[data-state="complete"] ellipse,
+[data-state="complete"] polygon {
+  fill: var(--color-paper);
+  stroke: var(--color-ink);
+  stroke-width: 1.8;
+  transition: fill 220ms ease, stroke 220ms ease;
+}
+[data-state="skipped"] rect {
+  fill: transparent;
+  stroke: var(--color-faint);
+  stroke-dasharray: 4 3;
+  stroke-width: 1;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-line); border-radius: 0; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-line-strong); }
