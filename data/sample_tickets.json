@@ -33,5 +33,89 @@
     "subject": "Slow throughput on CIRC-44782",
     "description": "Throughput on CIRC-44782 has been degraded since this morning. We are seeing approximately 2% packet loss between 08:00 and 11:00. Please investigate.",
     "submitted_at": "2026-05-03T11:45:00Z"
+  },
+  {
+    "ticket_id": "sample-6",
+    "partner_id": "P-1002",
+    "subject": "Outage on CIRC-55120 — multiple customers down",
+    "description": "Circuit CIRC-55120 is unreachable since 14:42. Approximately 180 business customers in Antwerp-Noord are without service. Escalating to your NOC.",
+    "submitted_at": "2026-05-03T14:46:00Z"
+  },
+  {
+    "ticket_id": "sample-7",
+    "partner_id": "P-1003",
+    "subject": "Weekend degraded throughput — CIRC-66301",
+    "description": "Customers reporting slow speeds on CIRC-66301 over the weekend. Latency spiked to 180ms and we are seeing packet loss between 22:00 Friday and 04:00 Sunday. Please run diagnostics.",
+    "submitted_at": "2026-05-04T08:10:00Z"
+  },
+  {
+    "ticket_id": "sample-8",
+    "partner_id": "P-1001",
+    "subject": "Move appointment APT-20815 to next week",
+    "description": "Could the field engineer site visit at our Brussels-Schaerbeek location (planned for Wednesday) be rescheduled? Our facility manager is on leave and we need someone on site to admit the engineer.",
+    "submitted_at": "2026-05-04T09:30:00Z"
+  },
+  {
+    "ticket_id": "sample-9",
+    "partner_id": "P-1003",
+    "subject": "Late-fee charges on INV-2026-0327 and INV-2026-0398",
+    "description": "Two invoices include late-fee charges (EUR 75 each) despite payment confirmation from our finance team. Payment reference is on IBAN BE68 5390 0754 7034 7034. Please review and credit if appropriate.",
+    "submitted_at": "2026-05-04T10:15:00Z"
+  },
+  {
+    "ticket_id": "sample-10",
+    "partner_id": "P-1004",
+    "subject": "10Gbps upgrade for our Ghent NOC",
+    "description": "We need to upgrade existing circuit CIRC-77410 from 1Gbps to 10Gbps to support new customer onboarding. Target go-live is end of Q3. What is the lead time and is there a new-line option if upgrade-in-place is slow?",
+    "submitted_at": "2026-05-04T11:05:00Z"
+  },
+  {
+    "ticket_id": "sample-11",
+    "partner_id": "P-1002",
+    "subject": "Intermittent packet loss on CIRC-55120",
+    "description": "Customers complaining about slow video conferencing. Our probes show ~3% packet loss with latency drifting from 12ms to 95ms between 07:00 and 09:30 each morning. Started two days ago. Throughput otherwise within SLA.",
+    "submitted_at": "2026-05-04T12:25:00Z"
+  },
+  {
+    "ticket_id": "sample-12",
+    "partner_id": "P-1001",
+    "subject": "Circuit CIRC-44781 outage — second incident this week",
+    "description": "CIRC-44781 down again as of 06:14 this morning. This is the second outage on this circuit in five days. Please prioritize and consider a root-cause review with our team.",
+    "submitted_at": "2026-05-05T06:18:00Z"
+  },
+  {
+    "ticket_id": "sample-13",
+    "partner_id": "P-1004",
+    "subject": "Sunday outage on CIRC-77410 — engineer on call",
+    "description": "Circuit CIRC-77410 went down at 02:14 Sunday. Our on-call engineer Jan Peeters (jan.peeters@ghentcomms.example.be, +32 9 555 0440) is reachable for coordination. Customers in Ghent-Gentbrugge affected.",
+    "submitted_at": "2026-05-05T02:18:00Z"
+  },
+  {
+    "ticket_id": "sample-14",
+    "partner_id": "P-1002",
+    "subject": "Equipment installation appointment APT-20920",
+    "description": "Field engineer visit needed to install new ONT equipment at our Antwerp-Centraal site. We will need property-management coordination — building access requires 48h notice. Could you book the appointment for week 21 or 22?",
+    "submitted_at": "2026-05-05T09:45:00Z"
+  },
+  {
+    "ticket_id": "sample-15",
+    "partner_id": "P-1003",
+    "subject": "Disputed contract rate — CIRC-66303",
+    "description": "Invoice INV-2026-0501 charged EUR 1,420 for CIRC-66303, but our signed contract rate is EUR 1,150. Please review and reissue if applicable. Finance contact: facturatie@operator.example.be.",
+    "submitted_at": "2026-05-05T11:00:00Z"
+  },
+  {
+    "ticket_id": "sample-16",
+    "partner_id": "P-1001",
+    "subject": "Question about appointment process",
+    "description": "Our operations team noticed an unusual smell in the small NOC closet at Brussels-Centre. Probably HVAC, but we want to know who to contact on your side if it turns out to be something circuit-related. Not raising as an outage yet — just want the right escalation path.",
+    "submitted_at": "2026-05-05T13:20:00Z"
+  },
+  {
+    "ticket_id": "sample-17",
+    "partner_id": "P-1004",
+    "subject": "Chronic flap on CIRC-77410 — last 24h",
+    "description": "CIRC-77410 has flapped seven times in the last 24 hours, with each outage lasting 30-90 seconds. Customers in Ghent-Sint-Pieters are reporting dropped sessions. Throughput between flaps looks normal. Please investigate root cause.",
+    "submitted_at": "2026-05-05T15:40:00Z"
   }
 ]
